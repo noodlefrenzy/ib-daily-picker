@@ -140,10 +140,56 @@ def config_set(
     key: Annotated[str, typer.Argument(help="Configuration key to set")],
     value: Annotated[str, typer.Argument(help="Value to set")],
 ) -> None:
-    """Set a configuration value."""
-    # TODO: Implement configuration update
-    console.print(f"[yellow]Setting {key} = {value}[/yellow]")
-    console.print("[dim]Configuration persistence not yet implemented.[/dim]")
+    """Set a configuration value.
+
+    Supported keys: default_tickers, risk_profile, uw_daily_budget
+    """
+    import tomli_w
+
+    settings = get_settings()
+    config_path = settings.config_dir / "config.toml"
+
+    # Load existing config or create new
+    config: dict[str, Any] = {}
+    if config_path.exists():
+        import tomli
+        with open(config_path, "rb") as f:
+            config = tomli.load(f)
+
+    # Map keys to config structure
+    key_map = {
+        "default_tickers": ("basket", "default_tickers", lambda v: v.split(",")),
+        "risk_profile": ("risk", "profile", str),
+        "uw_daily_budget": ("uw_daily_budget", None, int),
+    }
+
+    if key not in key_map:
+        console.print(f"[red]Unknown key: {key}[/red]")
+        console.print(f"[dim]Supported keys: {', '.join(key_map.keys())}[/dim]")
+        raise typer.Exit(1)
+
+    section, subkey, converter = key_map[key]
+    try:
+        converted_value = converter(value)
+    except Exception as e:
+        console.print(f"[red]Invalid value for {key}: {e}[/red]")
+        raise typer.Exit(1)
+
+    # Update config
+    if subkey:
+        if section not in config:
+            config[section] = {}
+        config[section][subkey] = converted_value
+    else:
+        config[section] = converted_value
+
+    # Save config
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(config_path, "wb") as f:
+        tomli_w.dump(config, f)
+
+    console.print(f"[green]Set {key} = {value}[/green]")
+    console.print(f"[dim]Config saved to {config_path}[/dim]")
 
 
 @config_app.command("init")
@@ -712,13 +758,96 @@ def analyze(
     ] = False,
 ) -> None:
     """Run analysis and generate signals."""
-    console.print("[cyan]Running analysis...[/cyan]")
+    import json
 
-    if strategy:
-        console.print(f"  Strategy: {strategy}")
+    from ib_daily_picker.analysis import SignalGenerator, StrategyEvaluator, load_strategy
+    from ib_daily_picker.store.database import get_db_manager
+    from ib_daily_picker.store.repositories import RecommendationRepository, StockRepository
 
-    # TODO: Implement analysis
-    console.print("[dim]Analysis engine not yet implemented.[/dim]")
+    settings = get_settings()
+
+    # Load strategy
+    if not strategy:
+        console.print("[red]Please specify a strategy with --strategy[/red]")
+        raise typer.Exit(1)
+
+    try:
+        strat = load_strategy(strategy)
+    except Exception as e:
+        console.print(f"[red]Failed to load strategy: {e}[/red]")
+        raise typer.Exit(1)
+
+    console.print(f"[cyan]Running analysis with strategy: {strat.name}[/cyan]")
+
+    # Get tickers
+    ticker_list = tickers.split(",") if tickers else settings.basket.default_tickers[:10]
+    console.print(f"  Analyzing: {', '.join(ticker_list)}")
+
+    # Initialize components
+    db = get_db_manager()
+    stock_repo = StockRepository(db)
+    rec_repo = RecommendationRepository(db)
+
+    evaluator = StrategyEvaluator(strat, stock_repo)
+    generator = SignalGenerator(strat)
+
+    # Evaluate each ticker
+    results = []
+    with console.status("[bold green]Evaluating...") as status:
+        for ticker in ticker_list:
+            status.update(f"[bold green]Evaluating {ticker}...")
+            try:
+                eval_result = evaluator.evaluate(ticker)
+                if eval_result.signal_triggered:
+                    results.append(eval_result)
+            except Exception as e:
+                console.print(f"[yellow]  {ticker}: {e}[/yellow]")
+
+    if not results:
+        console.print("[yellow]No signals triggered.[/yellow]")
+        return
+
+    # Generate and save recommendations
+    signal_result = generator.generate_signals(results)
+    for rec in signal_result.recommendations:
+        rec_repo.save(rec)
+
+    if json_output:
+        data = [
+            {
+                "symbol": r.symbol,
+                "signal_type": r.signal_type.value,
+                "entry_price": str(r.entry_price) if r.entry_price else None,
+                "stop_loss": str(r.stop_loss) if r.stop_loss else None,
+                "take_profit": str(r.take_profit) if r.take_profit else None,
+                "confidence": float(r.confidence),
+            }
+            for r in signal_result.recommendations
+        ]
+        console.print(json.dumps(data, indent=2))
+        return
+
+    # Display results
+    console.print(f"\n[green]Generated {len(signal_result.recommendations)} signal(s):[/green]")
+    table = Table(title="Signals")
+    table.add_column("Symbol", style="cyan")
+    table.add_column("Type", style="green")
+    table.add_column("Entry", justify="right")
+    table.add_column("Stop", justify="right")
+    table.add_column("Target", justify="right")
+    table.add_column("Confidence", justify="right")
+
+    for rec in signal_result.recommendations:
+        table.add_row(
+            rec.symbol,
+            rec.signal_type.value,
+            f"${rec.entry_price:.2f}" if rec.entry_price else "-",
+            f"${rec.stop_loss:.2f}" if rec.stop_loss else "-",
+            f"${rec.take_profit:.2f}" if rec.take_profit else "-",
+            f"{float(rec.confidence):.0%}",
+        )
+
+    console.print(table)
 
 
 @app.command("signals")
@@ -733,10 +862,62 @@ def signals(
     ] = False,
 ) -> None:
     """Show recent trading signals."""
-    console.print(f"[cyan]Showing last {limit} signals...[/cyan]")
+    import json
 
-    # TODO: Implement signal display
-    console.print("[dim]Signal display not yet implemented.[/dim]")
+    from ib_daily_picker.store.database import get_db_manager
+    from ib_daily_picker.store.repositories import RecommendationRepository
+
+    db = get_db_manager()
+    rec_repo = RecommendationRepository(db)
+
+    # Get pending recommendations
+    recommendations = rec_repo.get_pending(limit=limit)
+
+    if not recommendations:
+        console.print("[yellow]No pending signals found.[/yellow]")
+        return
+
+    if json_output:
+        data = [
+            {
+                "id": r.id,
+                "symbol": r.symbol,
+                "signal_type": r.signal_type.value,
+                "entry_price": str(r.entry_price) if r.entry_price else None,
+                "stop_loss": str(r.stop_loss) if r.stop_loss else None,
+                "take_profit": str(r.take_profit) if r.take_profit else None,
+                "confidence": float(r.confidence),
+                "generated_at": r.generated_at.isoformat(),
+            }
+            for r in recommendations
+        ]
+        console.print(json.dumps(data, indent=2))
+        return
+
+    console.print(f"[cyan]Recent signals ({len(recommendations)}):[/cyan]")
+    table = Table()
+    table.add_column("ID", style="dim", max_width=8)
+    table.add_column("Symbol", style="cyan")
+    table.add_column("Type", style="green")
+    table.add_column("Entry", justify="right")
+    table.add_column("Stop", justify="right")
+    table.add_column("Target", justify="right")
+    table.add_column("Confidence", justify="right")
+    table.add_column("Generated", style="dim")
+
+    for rec in recommendations:
+        table.add_row(
+            rec.id[:8],
+            rec.symbol,
+            rec.signal_type.value,
+            f"${rec.entry_price:.2f}" if rec.entry_price else "-",
+            f"${rec.stop_loss:.2f}" if rec.stop_loss else "-",
+            f"${rec.take_profit:.2f}" if rec.take_profit else "-",
+            f"{float(rec.confidence):.0%}",
+            rec.generated_at.strftime("%Y-%m-%d %H:%M"),
+        )
+
+    console.print(table)
 
 
 # =============================================================================
@@ -1349,14 +1530,40 @@ def db_export(
     ] = Path("export.csv"),
     table: Annotated[
         str,
-        typer.Option("--table", "-t", help="Table to export"),
+        typer.Option("--table", "-t", help="Table to export (ohlcv, flow_alerts, recommendations, trades)"),
     ] = "ohlcv",
 ) -> None:
     """Export data to CSV."""
+    from ib_daily_picker.store.database import get_db_manager
+
+    valid_tables = ["ohlcv", "flow_alerts", "recommendations", "trades"]
+    if table not in valid_tables:
+        console.print(f"[red]Invalid table: {table}[/red]")
+        console.print(f"[dim]Valid tables: {', '.join(valid_tables)}[/dim]")
+        raise typer.Exit(1)
+
     console.print(f"[cyan]Exporting {table} to {output}...[/cyan]")
 
-    # TODO: Implement export
-    console.print("[dim]Data export not yet implemented.[/dim]")
+    db = get_db_manager()
+    with db.duckdb() as conn:
+        # Get data
+        result = conn.execute(f"SELECT * FROM {table}").fetchall()
+        if not result:
+            console.print(f"[yellow]No data in {table} table.[/yellow]")
+            return
+
+        # Get column names
+        columns = [desc[0] for desc in conn.description]
+
+        # Write CSV
+        import csv
+        output.parent.mkdir(parents=True, exist_ok=True)
+        with open(output, "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(columns)
+            writer.writerows(result)
+
+    console.print(f"[green]Exported {len(result)} rows to {output}[/green]")
 
 
 if __name__ == "__main__":

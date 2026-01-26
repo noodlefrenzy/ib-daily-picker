@@ -15,7 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from decimal import Decimal
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from ib_daily_picker.models import Trade
@@ -353,7 +353,7 @@ def _calculate_daily_returns(equity_curve: list[EquityCurvePoint]) -> list[float
 
 def compare_strategies(
     metrics_list: list[BacktestMetrics],
-) -> dict[str, dict]:
+) -> dict[str, Any]:
     """Compare multiple strategy backtest results.
 
     Args:
@@ -365,7 +365,7 @@ def compare_strategies(
     if not metrics_list:
         return {}
 
-    comparison = {
+    comparison: dict[str, list[dict[str, Any]] | dict[str, list[str]]] = {
         "strategies": [],
         "rankings": {},
     }

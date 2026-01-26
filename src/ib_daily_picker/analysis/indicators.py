@@ -336,16 +336,16 @@ class IndicatorCalculator:
             fast = params.get("fast_period", 12)
             slow = params.get("slow_period", 26)
             signal = params.get("signal_period", 9)
-            result = calculate_macd(data, fast, slow, signal)
+            macd_result = calculate_macd(data, fast, slow, signal)
             # Return the MACD line by default
-            values = result.macd_line
+            values = macd_result.macd_line
 
         elif indicator_type == "BOLLINGER":
             period = params.get("period", 20)
             std_dev = params.get("std_dev", 2.0)
-            result = calculate_bollinger_bands(data, period, std_dev)
+            bollinger_result = calculate_bollinger_bands(data, period, std_dev)
             # Return the middle band by default
-            values = result.middle_band
+            values = bollinger_result.middle_band
 
         elif indicator_type == "VOLUME_SMA":
             period = params.get("period", 20)

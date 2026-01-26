@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import logging
 from datetime import date, datetime, timedelta
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 from ib_daily_picker.config import get_settings
 from ib_daily_picker.fetchers.base import FetchProgress, FetchResult, FetchStatus, FetcherWithFallback
@@ -134,7 +134,7 @@ class StockDataFetcher:
         start_date: date | None = None,
         end_date: date | None = None,
         incremental: bool = True,
-        progress_callback: callable | None = None,
+        progress_callback: Callable[[FetchProgress], None] | None = None,
     ) -> dict[str, FetchResult[list[OHLCV]]]:
         """Fetch OHLCV data for multiple symbols and store.
 

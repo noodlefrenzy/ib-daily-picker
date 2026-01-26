@@ -152,8 +152,8 @@ class SignalGenerator:
         risk_config = RISK_PROFILES.get(profile_name, RISK_PROFILES["moderate"])
 
         # Apply strategy overrides
-        risk_per_trade = self._strategy.risk.risk_per_trade or risk_config["risk_per_trade"]
-        min_risk_reward = self._strategy.risk.min_risk_reward or risk_config["min_risk_reward"]
+        risk_per_trade = Decimal(str(self._strategy.risk.risk_per_trade or risk_config["risk_per_trade"]))
+        min_risk_reward = Decimal(str(self._strategy.risk.min_risk_reward or risk_config["min_risk_reward"]))
 
         # Calculate position size based on risk
         position_size = None

@@ -582,9 +582,9 @@ def get_journal_manager() -> JournalManager:
     """Get the global journal manager instance."""
     global _journal_manager
     if _journal_manager is None:
-        from ib_daily_picker.store.database import get_database_manager
+        from ib_daily_picker.store.database import get_db_manager
 
-        _journal_manager = JournalManager(get_database_manager())
+        _journal_manager = JournalManager(get_db_manager())
     return _journal_manager
 
 

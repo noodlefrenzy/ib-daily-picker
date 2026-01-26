@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Generic, TypeVar
+from typing import Callable, Generic, TypeVar
 
 from ib_daily_picker.models import OHLCV, OHLCVBatch, StockMetadata
 
@@ -137,7 +137,7 @@ class BaseFetcher(ABC):
         symbols: list[str],
         start_date: date | None = None,
         end_date: date | None = None,
-        progress_callback: callable | None = None,
+        progress_callback: Callable[[FetchProgress], None] | None = None,
     ) -> dict[str, FetchResult[list[OHLCV]]]:
         """Fetch OHLCV data for multiple symbols.
 

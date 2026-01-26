@@ -1,228 +1,352 @@
-# Claude Code Project Template
+# IB Daily Picker
 
-A universal template for projects using [Claude Code](https://docs.anthropic.com/en/docs/claude-code), Anthropic's CLI for AI-assisted software development.
+A Python CLI tool that identifies promising stock trading opportunities by correlating market price data with options flow signals from Unusual Whales, applying configurable trading strategies, and maintaining a journal for backtesting.
 
-## What's Included
+## Features
 
-```
-claude-template/
-├── CLAUDE.md              # Project instructions template for Claude Code
-├── README.md              # This file
-└── .claude/
-    └── commands/          # /plan command suite for structured development
-        └── README.md      # Comprehensive command documentation
+- **Stock Data Fetching**: Pulls OHLCV data from yfinance (primary) with Finnhub fallback
+- **Flow Data Integration**: Fetches options flow alerts from Unusual Whales API
+- **Technical Indicators**: RSI, SMA, EMA, ATR, MACD, Bollinger Bands, VWAP
+- **YAML Strategy Definitions**: Define trading strategies in human-readable YAML
+- **Natural Language Strategies**: Use LLM (Claude or Ollama) to convert English descriptions to YAML
+- **Trade Journal**: Track recommendations, executions, and outcomes
+- **Backtesting Engine**: Evaluate strategies against historical data with walk-forward validation
+- **Risk Profiles**: Conservative, moderate, and aggressive position sizing
+
+## Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/noodlefrenzy/ib-daily-picker.git
+cd ib-daily-picker
+
+# Install with development dependencies
+pip install -e ".[dev]"
+
+# Verify installation
+ib-picker --help
 ```
 
 ## Quick Start
 
-### 1. Copy Template to Your Project
-
 ```bash
-# Copy CLAUDE.md and .claude/ directory to your project
-cp CLAUDE.md /path/to/your-project/
-cp -r .claude /path/to/your-project/
+# 1. Initialize configuration
+ib-picker config init
+
+# 2. Fetch stock data for some tickers
+ib-picker fetch stocks --tickers AAPL,MSFT,GOOGL,NVDA
+
+# 3. Validate the example strategy
+ib-picker strategy validate strategies/example_rsi_flow.yaml
+
+# 4. View available strategies
+ib-picker strategy list
+
+# 5. Run a backtest
+ib-picker backtest run example_rsi_flow --from 2024-01-01 --to 2024-12-31
 ```
 
-### 2. Customize CLAUDE.md
+## Configuration
 
-Open `CLAUDE.md` and update these sections:
+Configuration is stored in `~/.ib-picker/config.toml` or via environment variables.
 
-#### Front-Matter Configuration
+### Environment Variables
+
+```bash
+# Stock Data (optional - yfinance works without keys)
+FINNHUB_API_KEY=your_finnhub_key
+
+# Flow Data (required for flow features)
+UNUSUAL_WHALES_API_KEY=your_uw_key
+
+# LLM (optional - for natural language strategy conversion)
+LLM_PROVIDER=anthropic  # or "ollama"
+ANTHROPIC_API_KEY=your_anthropic_key
+OLLAMA_HOST=http://localhost:11434
+OLLAMA_MODEL=llama2
+
+# Database (optional - defaults shown)
+IB_PICKER_DATA_DIR=~/.ib-picker/data
+```
+
+### View Current Configuration
+
+```bash
+ib-picker config show
+```
+
+## CLI Commands
+
+### Data Fetching
+
+```bash
+# Fetch stock price data
+ib-picker fetch stocks --tickers AAPL,MSFT,GOOGL
+ib-picker fetch stocks --sector Technology --limit 50
+
+# Fetch flow alerts (requires Unusual Whales API key)
+ib-picker fetch flows --tickers AAPL,MSFT
+ib-picker fetch flows --min-premium 100000
+
+# Check data coverage
+ib-picker fetch status
+```
+
+### Strategy Management
+
+```bash
+# List available strategies
+ib-picker strategy list
+
+# Validate a strategy file
+ib-picker strategy validate strategies/my_strategy.yaml
+
+# Show strategy details
+ib-picker strategy show example_rsi_flow
+
+# Create strategy from natural language (requires LLM)
+ib-picker strategy create my_strategy --from-english "Buy when RSI below 30 with bullish flow, 5% take profit, 2 ATR stop loss"
+```
+
+### Analysis
+
+```bash
+# Run analysis with a strategy
+ib-picker analyze --strategy example_rsi_flow --tickers AAPL,MSFT
+
+# View recent signals
+ib-picker signals --limit 20
+```
+
+### Trade Journal
+
+```bash
+# List journal entries
+ib-picker journal list
+ib-picker journal list --status open
+
+# Open a new trade
+ib-picker journal open AAPL --entry-price 150.00 --direction long
+
+# Execute a recommendation
+ib-picker journal execute <recommendation-id> --price 150.00
+
+# Close a trade
+ib-picker journal close <trade-id> --exit-price 157.50
+
+# Add notes to a trade
+ib-picker journal note <trade-id> "Closed early due to earnings"
+
+# View performance metrics
+ib-picker journal metrics
+
+# Export trades
+ib-picker journal export --format csv --output trades.csv
+```
+
+### Backtesting
+
+```bash
+# Run backtest
+ib-picker backtest run example_rsi_flow --from 2024-01-01 --to 2024-12-31
+
+# Compare strategies
+ib-picker backtest compare strategy1,strategy2 --from 2024-01-01 --to 2024-12-31
+
+# Custom parameters
+ib-picker backtest run my_strategy \
+  --from 2023-01-01 \
+  --to 2024-12-31 \
+  --initial-capital 100000 \
+  --position-size 0.1 \
+  --output results.json
+```
+
+### Database
+
+```bash
+# Show database status
+ib-picker db status
+
+# Export data
+ib-picker db export --format csv --output data_export/
+```
+
+## Strategy Format
+
+Strategies are defined in YAML files. See `strategies/example_rsi_flow.yaml` for a complete example.
 
 ```yaml
----
-version: "1.0.0"
-project_type: "web-app"           # web-app | cli | backend | library | monorepo
-testing_philosophy: "tad"          # tdd | tad | bdd | lightweight | manual | hybrid
-bootstrap_source: null
-last_updated: "2025-01-26"
----
+strategy:
+  name: "RSI Momentum with Flow Confirmation"
+  version: "1.0.0"
+  description: "Buy oversold stocks with bullish options flow"
+
+indicators:
+  - name: "rsi_14"
+    type: "RSI"
+    params:
+      period: 14
+      source: "close"
+  - name: "sma_50"
+    type: "SMA"
+    params:
+      period: 50
+
+entry:
+  conditions:
+    - type: "indicator_threshold"
+      indicator: "rsi_14"
+      operator: "lt"
+      value: 35
+    - type: "flow_signal"
+      direction: "bullish"
+      min_premium: 100000
+  logic: "all"  # "all" = AND, "any" = OR
+
+exit:
+  take_profit:
+    type: "percentage"
+    value: 5.0
+  stop_loss:
+    type: "atr_multiple"
+    value: 2.0
+  trailing_stop:
+    type: "percentage"
+    value: 3.0
+
+risk:
+  profile: "aggressive"  # conservative, moderate, aggressive
 ```
 
-#### Quick Start Section (Lines 1-50)
+### Supported Indicators
 
-Replace placeholders with your project specifics:
+| Type | Description | Parameters |
+|------|-------------|------------|
+| `RSI` | Relative Strength Index | `period`, `source` |
+| `SMA` | Simple Moving Average | `period`, `source` |
+| `EMA` | Exponential Moving Average | `period`, `source` |
+| `ATR` | Average True Range | `period` |
+| `MACD` | Moving Average Convergence Divergence | `fast`, `slow`, `signal` |
+| `BOLLINGER` | Bollinger Bands | `period`, `std_dev` |
+| `VWAP` | Volume Weighted Average Price | - |
+| `VOLUME_SMA` | Volume Simple Moving Average | `period` |
 
-| Placeholder | Replace With | Example |
-|-------------|--------------|---------|
-| `[PROJECT_NAME]` | Your project name | My Web App |
-| `[INSTALL_CMD]` | Install command | `npm install` |
-| `[DEV_CMD]` | Development command | `npm run dev` |
-| `[TEST_CMD]` | Test command | `npm test` |
-| `[BUILD_CMD]` | Build command | `npm run build` |
-| `[LINT_CMD]` | Lint command | `npm run lint` |
+### Condition Operators
 
-#### User Content Sections
+| Operator | Description |
+|----------|-------------|
+| `lt` | Less than |
+| `le` | Less than or equal |
+| `gt` | Greater than |
+| `ge` | Greater than or equal |
+| `eq` | Equal |
+| `ne` | Not equal |
+| `cross_above` | Crosses above |
+| `cross_below` | Crosses below |
 
-Look for `<!-- USER CONTENT START: name -->` markers. These sections are for your project-specific content and are preserved during template updates:
+### Risk Profiles
 
-- **overview**: Project description and purpose
-- **status**: Current development focus and recent changes
-- **code_style_additions**: Project-specific style rules
-- **testing_specifics**: Testing guidance for your stack
-- **architecture**: System design, directory structure, tech stack
-- **workflows**: CI/CD and deployment conventions
-- **learnings**: Discoveries and insights from development
-- **tech_debt**: Known issues and remediation plans
-- **extensions**: Project-type-specific additions
+| Profile | Risk per Trade | Min R:R | Max Positions |
+|---------|---------------|---------|---------------|
+| `conservative` | 0.5% | 3.0 | 5 |
+| `moderate` | 1.0% | 2.0 | 8 |
+| `aggressive` | 2.0% | 1.5 | 10 |
 
-### 3. Initialize Project Constitution (Optional)
+## Architecture
 
-For full /plan workflow support, run the constitution setup:
+```
+ib-daily-picker/
+├── src/ib_daily_picker/
+│   ├── cli.py              # Typer CLI entry points
+│   ├── config.py           # pydantic-settings configuration
+│   ├── analysis/           # Strategy evaluation, indicators, signals
+│   ├── backtest/           # Backtesting engine and metrics
+│   ├── fetchers/           # Data fetchers (yfinance, Finnhub, UW)
+│   ├── journal/            # Trade journal management
+│   ├── llm/                # LLM strategy conversion
+│   ├── models/             # Domain models (Stock, Flow, Trade)
+│   └── store/              # Database layer (DuckDB + SQLite)
+├── strategies/             # YAML strategy definitions
+├── tests/                  # Test suite (111 tests)
+└── docs/adr/               # Architecture Decision Records
+```
+
+### Technology Stack
+
+| Layer | Technology |
+|-------|------------|
+| CLI | Typer + Rich |
+| Config | pydantic-settings |
+| Stock Data | yfinance (primary) + Finnhub (fallback) |
+| Flow Data | Unusual Whales API |
+| Database | DuckDB (analytics) + SQLite (state) |
+| Validation | Pydantic v2 |
+| LLM | Instructor (Anthropic + Ollama) |
+| Testing | pytest |
+
+See [docs/adr/](docs/adr/) for detailed architecture decisions.
+
+## Development
 
 ```bash
-/plan-0-constitution
+# Install dev dependencies
+pip install -e ".[dev]"
+
+# Run tests
+pytest
+
+# Run tests with coverage
+pytest --cov
+
+# Type checking
+mypy src/
+
+# Linting
+ruff check .
+
+# Formatting
+ruff format .
 ```
 
-This creates `docs/project-rules/` with:
-- `constitution.md` - Core project principles
-- `rules.md` - Enforceable standards
-- `idioms.md` - Patterns and conventions
-- `architecture.md` - System boundaries
+## Data Storage
 
-## Using the /plan Commands
+Data is stored in `~/.ib-picker/data/` by default:
 
-The template includes a comprehensive command suite for structured, phase-by-phase development.
+- `analytics.duckdb` - OHLCV prices, flow alerts, recommendations (DuckDB)
+- `state.sqlite` - Sync tracking, configuration (SQLite)
 
-**Full documentation**: See [.claude/commands/README.md](.claude/commands/README.md)
+The dual-database architecture optimizes for:
+- **DuckDB**: Columnar storage for fast analytical queries on time-series data
+- **SQLite**: ACID guarantees for application state
 
-### Core Workflow
+## API Keys
 
-```bash
-# 1. Create feature specification
-/plan-1b-specify "Add user authentication with OAuth2"
+### Finnhub (Optional)
+- Free tier: 60 requests/minute
+- Register at: https://finnhub.io/
+- Used as fallback when yfinance fails
 
-# 2. Clarify requirements (testing strategy, ambiguities)
-/plan-2-clarify
+### Unusual Whales (Required for flow features)
+- Subscription required for API access
+- Register at: https://unusualwhales.com/
+- Rate limit: 120 requests/minute
 
-# 3. Generate implementation plan
-/plan-3-architect
-
-# 4. Generate tasks for a phase
-/plan-5-phase-tasks-and-brief --phase "Phase 1: Setup"
-
-# 5. Implement the phase
-/plan-6-implement-phase --phase "Phase 1: Setup"
-
-# 6. Review implementation
-/plan-7-code-review --phase "Phase 1: Setup"
-```
-
-### Available Commands
-
-| Command | Purpose |
-|---------|---------|
-| `/plan-0-constitution` | Initialize project governance (once per project) |
-| `/plan-1a-explore` | Research existing codebase |
-| `/plan-1b-specify` | Create feature specification |
-| `/plan-2-clarify` | Resolve ambiguities |
-| `/plan-3-architect` | Generate implementation plan |
-| `/plan-4-complete-the-plan` | Validate plan readiness |
-| `/plan-5-phase-tasks-and-brief` | Generate phase tasks |
-| `/plan-6-implement-phase` | Execute implementation |
-| `/plan-7-code-review` | Review implementation |
-| `/didyouknow` | Build shared understanding |
-
-## CLAUDE.md Structure
-
-The template uses **progressive disclosure** - most important information first:
-
-| Section | Lines | Purpose |
-|---------|-------|---------|
-| Quick Start | 1-50 | Essential commands and current status |
-| Core Guidance | 51-150 | Universal code style and practices |
-| Documentation | 151-270 | Exit criteria, README sync, ADRs |
-| Project-Specific | 271-350 | Architecture (customize this) |
-| Workflows | 351-400 | UI testing, CI/CD (conditional) |
-| Learning | 401-450 | Discoveries and tech debt |
-| Appendices | 451+ | Reference material |
-
-### Conditional Sections
-
-Some sections activate based on `project_type`:
-
-- **Manual UI Testing**: Shows for `web-app` and `mobile` projects
-- **Extension Points**: Different guidance per project type
-
-### Machine-Parseable Markers
-
-The template uses markers for tooling integration:
-
-```markdown
-<!-- SECTION: NAME -->                    # Section boundaries
-<!-- REQUIRED / OPTIONAL -->              # Section requirements
-<!-- CONDITIONAL: project_type = X -->    # Conditional display
-<!-- USER CONTENT START: name -->         # Protected user content
-<!-- USER CONTENT END: name -->           # End of protected content
-```
-
-## Customization Guide
-
-### For Web Applications
-
-1. Set `project_type: "web-app"` in front-matter
-2. Manual UI Testing section will be visible
-3. Add component library details in architecture
-4. Document state management patterns
-
-### For CLI Tools
-
-1. Set `project_type: "cli"` in front-matter
-2. Document command structure in architecture
-3. Add flag conventions and output formatting rules
-
-### For Backend Services
-
-1. Set `project_type: "backend"` in front-matter
-2. Document API versioning strategy
-3. Add database migration approach
-4. Define logging and monitoring conventions
-
-### For Libraries
-
-1. Set `project_type: "library"` in front-matter
-2. Document public API design principles
-3. Add versioning and changelog conventions
-4. Define example maintenance strategy
-
-## Testing Philosophy Options
-
-Choose your approach in front-matter and `/plan-2-clarify`:
-
-| Philosophy | Best For |
-|------------|----------|
-| `tdd` | Features with clear specs, high reliability needs |
-| `tad` | Exploratory development, discovering requirements |
-| `bdd` | User-facing features, behavior-focused testing |
-| `lightweight` | Simple utilities, well-understood domains |
-| `manual` | UI-heavy features, rapid prototyping |
-| `hybrid` | Mixed approaches per component complexity |
-
-## Learning Capture
-
-The template includes a structured learning section. After completing work, document discoveries:
-
-```markdown
-### [YYYY-MM-DD] - Topic Title
-
-**Context:** What were you working on?
-
-**Discovery:** What did you learn?
-
-**Impact:** How does this affect future work?
-
-**References:** Related files, PRs, ADRs
-
-**Tags:** #gotcha | #pattern | #antipattern | #performance
-```
-
-The `/plan-6-implement-phase` command prompts for reflection after each phase.
-
-## Requirements
-
-- [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) installed
-- Git repository (recommended for full workflow support)
+### Anthropic (Optional, for LLM features)
+- Pay-per-use API
+- Register at: https://console.anthropic.com/
+- Used for natural language to strategy conversion
 
 ## License
 
-This template is provided as-is for use with Claude Code projects.
+MIT
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make changes with tests
+4. Run the test suite: `pytest`
+5. Submit a pull request
+
+See [CLAUDE.md](CLAUDE.md) for development guidelines and conventions.

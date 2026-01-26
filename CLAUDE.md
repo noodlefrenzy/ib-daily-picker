@@ -1,44 +1,60 @@
 ---
 # CLAUDE.md Template Configuration
 version: "1.0.0"
-project_type: "[PROJECT_TYPE]"  # web-app | cli | backend | library | monorepo
-testing_philosophy: "[TESTING_PHILOSOPHY]"  # tdd | tad | bdd | lightweight | manual | hybrid
+project_type: "cli"  # web-app | cli | backend | library | monorepo
+testing_philosophy: "tdd"  # tdd | tad | bdd | lightweight | manual | hybrid
 bootstrap_source: null  # Set by /plan-0-constitution when bootstrapping
-last_updated: "[YYYY-MM-DD]"
+last_updated: "2026-01-26"
 ---
 
 <!-- SECTION: QUICK_START -->
 <!-- REQUIRED -->
-# [PROJECT_NAME]
+# IB Daily Picker
 
 ## Project Overview
 
 <!-- USER CONTENT START: overview -->
-[Brief description of what this project does, its main purpose, and key value proposition.]
+A Python CLI tool that identifies promising stock opportunities by correlating market flow data with price action.
+
+**Core Workflow:**
+1. Fetch and store financial data for a configurable basket of stocks (free API)
+2. Query Interactive Brokers API for flow/flow alerts (cost-conscious, parsimonious usage)
+3. Analyze flows against stock data to surface potential buys
+4. Store all data (stocks, flows, alerts) to enable backtesting and strategy iteration
+
+**Key Constraints:**
+- IB API calls are metered/costly - minimize requests, cache aggressively
+- Historical data storage enables counterfactual analysis without re-fetching
+- Strategies should be pluggable for backtesting against historical data
 <!-- USER CONTENT END: overview -->
 
 ## Development Commands
 
 ```bash
-# Essential commands - customize for your project
-[INSTALL_CMD]     # e.g., npm install, pnpm install, pip install -e .
-[DEV_CMD]         # e.g., npm run dev, pnpm dev, python main.py
-[TEST_CMD]        # e.g., npm test, pytest, go test ./...
-[BUILD_CMD]       # e.g., npm run build, cargo build, go build
-[LINT_CMD]        # e.g., npm run lint, ruff check, golangci-lint run
+# Essential commands
+pip install -e ".[dev]"       # Install with dev dependencies
+python -m ib_daily_picker     # Run CLI (or use entry point after install)
+pytest                        # Run test suite
+pytest --cov                  # Run tests with coverage
+ruff check .                  # Lint
+ruff format .                 # Format code
+mypy src/                     # Type checking
 ```
 
 ## Current Status
 
 <!-- USER CONTENT START: status -->
-**Focus:** [Current development focus or milestone]
+**Focus:** Initial planning and architecture design
 
 **Recent Changes:**
-- [Most recent significant change]
-- [Previous change]
+- Project scaffolding created
+- CLAUDE.md customized for project requirements
 
 **Known Issues:**
-- [Any blocking or critical issues]
+- Spec incomplete - using /plan commands to elaborate requirements
+- API selection (free stock data) TBD
+- Database choice TBD
+- IB API authentication/setup not yet documented
 <!-- USER CONTENT END: status -->
 
 ---
@@ -50,11 +66,12 @@ last_updated: "[YYYY-MM-DD]"
 ### Code Style Principles
 
 **General:**
-- Functional, immutable patterns preferred
-- async/await exclusively (no `.then()` chains)
-- No `any` types or unchecked casts (TypeScript)
-- Prefer `import type` for type-only imports
+- Functional, immutable patterns preferred where practical
+- async/await for I/O operations (httpx, database, IB API)
+- Strict type hints throughout - no `Any` without justification
+- Use `dataclasses` or `pydantic` for data structures
 - Underscore prefix (`_var`) for intentionally unused variables
+- Python 3.11+ features acceptable (match statements, etc.)
 
 **Error Handling:**
 - Validate at boundaries (user input, external APIs)
@@ -67,7 +84,14 @@ last_updated: "[YYYY-MM-DD]"
 - Clear dependency direction (apps -> packages -> external)
 
 <!-- USER CONTENT START: code_style_additions -->
-<!-- Add project-specific style rules here -->
+**Python/Financial Domain Specifics:**
+- Use `Decimal` for money/prices, never `float`
+- Dates: `datetime.date` for calendar dates, `datetime.datetime` with timezone for timestamps
+- All timestamps stored as UTC; convert to local only for display
+- API responses should be validated with Pydantic before use
+- Database models separate from API models (clean boundaries)
+- Use context managers for DB connections and API sessions
+- Log all external API calls with timing for cost tracking
 <!-- USER CONTENT END: code_style_additions -->
 
 ### File Operations Checklist
@@ -76,7 +100,7 @@ last_updated: "[YYYY-MM-DD]"
 
 1. Search for references to the old path:
    ```bash
-   grep -r "old-filename" --include="*.md" --include="*.ts" --include="*.tsx"
+   grep -r "old-filename" --include="*.md" --include="*.py" --include="*.toml"
    ```
 2. Check for README.md or index files in the same/parent directory
 3. Check any ADR index if touching ADRs
@@ -90,21 +114,21 @@ last_updated: "[YYYY-MM-DD]"
 
 For TAD/TDD workflows, every test file should include a Test Doc block:
 
-```
-/**
- * TEST DOC: [Feature/Component Name]
- *
- * WHAT: [What behavior is being tested]
- * WHY: [Why this test exists - what bug/requirement it covers]
- * HOW: [Brief description of test approach]
- *
- * CASES:
- * - [Case 1]: [Expected behavior]
- * - [Case 2]: [Expected behavior]
- *
- * EDGE CASES:
- * - [Edge case]: [How it's handled]
- */
+```python
+"""
+TEST DOC: [Feature/Component Name]
+
+WHAT: [What behavior is being tested]
+WHY: [Why this test exists - what bug/requirement it covers]
+HOW: [Brief description of test approach]
+
+CASES:
+- [Case 1]: [Expected behavior]
+- [Case 2]: [Expected behavior]
+
+EDGE CASES:
+- [Edge case]: [How it's handled]
+"""
 ```
 <!-- END CONDITIONAL -->
 
@@ -119,7 +143,28 @@ For TAD/TDD workflows, every test file should include a Test Doc block:
 | Hybrid | Complex projects | Mix approaches per component |
 
 <!-- USER CONTENT START: testing_specifics -->
-<!-- Add project-specific testing guidance here -->
+**TDD for Financial Data:**
+- Write tests first - they define the contract before implementation
+- Mock all external APIs (stock data, IB) with realistic fixtures
+- Use `pytest-recording` or VCR.py to capture real API responses for fixtures
+- Test edge cases: market holidays, after-hours, missing data, API errors
+- Decimal precision tests: verify no floating-point drift in calculations
+- Time-sensitive tests: use `freezegun` to control datetime.now()
+
+**Test Organization:**
+```
+tests/
+  unit/           # Pure function tests, no I/O
+  integration/    # DB operations, mocked external APIs
+  fixtures/       # Shared test data, recorded API responses
+  conftest.py     # Shared fixtures (db sessions, mock clients)
+```
+
+**Critical Test Scenarios:**
+- API rate limiting / backoff behavior
+- Partial data scenarios (some stocks missing)
+- Strategy backtesting determinism (same inputs = same outputs)
+- Data storage and retrieval round-trips
 <!-- USER CONTENT END: testing_specifics -->
 
 ### Verification Philosophy
@@ -139,9 +184,10 @@ For TAD/TDD workflows, every test file should include a Test Doc block:
 **Pre-Commit Verification:**
 ```bash
 # Run all verification layers before committing
-[TYPE_CHECK_CMD]  # e.g., tsc --noEmit, mypy, go vet
-[LINT_CMD]        # e.g., eslint, ruff, golangci-lint
-[TEST_CMD]        # e.g., jest, pytest, go test
+mypy src/                 # Type checking
+ruff check .              # Linting
+ruff format --check .     # Format verification
+pytest                    # Tests
 ```
 
 ---
@@ -237,17 +283,17 @@ For TAD/TDD workflows, every test file should include a Test Doc block:
 ### Micro-Context Standards
 
 **File Headers (for complex files):**
-```
-/**
- * [FILENAME]
- *
- * PURPOSE: [What this file does]
- * OWNER: [Team or person responsible]
- * DEPENDENCIES: [Key external dependencies]
- *
- * ARCHITECTURE NOTES:
- * [Any non-obvious design decisions or patterns]
- */
+```python
+"""
+[FILENAME]
+
+PURPOSE: [What this file does]
+OWNER: [Team or person responsible]
+DEPENDENCIES: [Key external dependencies]
+
+ARCHITECTURE NOTES:
+[Any non-obvious design decisions or patterns]
+"""
 ```
 
 **Front-Matter (for documentation files):**
@@ -262,10 +308,11 @@ related:
 ```
 
 **Contextual Comments:**
-- Use `// WHY:` for non-obvious decisions
-- Use `// TODO:` with ticket/issue reference
-- Use `// HACK:` with explanation and remediation plan
-- Use `// PERF:` for performance-critical sections
+- Use `# WHY:` for non-obvious decisions
+- Use `# TODO:` with ticket/issue reference
+- Use `# HACK:` with explanation and remediation plan
+- Use `# PERF:` for performance-critical sections
+- Use `# COST:` for IB API calls to track metered usage
 
 ---
 
@@ -276,37 +323,104 @@ related:
 <!-- USER CONTENT START: architecture -->
 ### Overview
 
-[Describe the high-level architecture - layers, components, data flow]
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│  Stock API  │     │   IB API    │     │  Database   │
+│   (free)    │     │  (metered)  │     │  (local)    │
+└──────┬──────┘     └──────┬──────┘     └──────┬──────┘
+       │                   │                   │
+       └─────────┬─────────┴─────────┬─────────┘
+                 │                   │
+           ┌─────▼─────┐       ┌─────▼─────┐
+           │  Fetchers │       │   Store   │
+           └─────┬─────┘       └─────┬─────┘
+                 │                   │
+           ┌─────▼───────────────────▼─────┐
+           │         Analysis Engine       │
+           │  (strategies, flow matching)  │
+           └─────────────┬─────────────────┘
+                         │
+                   ┌─────▼─────┐
+                   │    CLI    │
+                   │ (commands)│
+                   └───────────┘
+```
+
+**Data Flow:**
+1. CLI triggers fetch → Fetchers pull data → Store persists
+2. CLI triggers analysis → Engine loads from Store → Strategies evaluate → Results output
+3. Backtest mode → Engine replays historical data → Strategy evaluated → Metrics reported
 
 ### Directory Structure
 
 ```
-[PROJECT_ROOT]/
+ib-daily-picker/
   src/
-    [Describe key directories]
+    ib_daily_picker/
+      __init__.py
+      cli.py              # Click/Typer CLI entry points
+      config.py           # Settings, environment, basket definitions
+      fetchers/           # Stock API client, IB API client
+      store/              # Database models, repositories
+      analysis/           # Strategy implementations, flow matching
+      models/             # Domain models (Stock, Flow, Alert, etc.)
   tests/
-    [Test organization]
+    unit/                 # Pure logic tests
+    integration/          # DB and mocked API tests
+    fixtures/             # Test data, recorded API responses
+    conftest.py
   docs/
-    [Documentation structure]
+    adr/                  # Architecture Decision Records
+  pyproject.toml
 ```
 
 ### Technology Stack
 
 | Layer | Technology | Purpose |
 |-------|------------|---------|
-| [LAYER] | [TECH] | [WHY] |
+| CLI | Click or Typer | Command-line interface (TBD during planning) |
+| HTTP | httpx | Async HTTP client for APIs |
+| Database | SQLite or PostgreSQL | Local storage (TBD - SQLite for simplicity, PG for scale) |
+| ORM | SQLAlchemy 2.0 | Database abstraction with async support |
+| Validation | Pydantic v2 | API response validation, config |
+| IB Client | ib_insync or native | Interactive Brokers API access |
+| Testing | pytest | Test framework |
 
 ### Domain Concepts
 
 | Concept | Definition | Where Used |
 |---------|------------|------------|
-| [TERM] | [MEANING] | [LOCATIONS] |
+| **Basket** | Configured set of stock symbols to track | config, fetchers, analysis |
+| **Stock Data** | OHLCV + metadata for a symbol on a date | fetchers, store, analysis |
+| **Flow** | Order flow data from IB (volume, direction, timing) | fetchers, store, analysis |
+| **Flow Alert** | IB-defined unusual activity signal | fetchers, store, analysis |
+| **Strategy** | Pluggable analysis logic that scores opportunities | analysis, backtesting |
+| **Signal** | Strategy output: buy/sell recommendation with confidence | analysis, CLI output |
+| **Backtest** | Historical replay of strategy against stored data | analysis |
 
 ### Integration Points
 
 | External System | Purpose | Interface |
 |-----------------|---------|-----------|
-| [SYSTEM] | [WHY] | [HOW - API, SDK, etc.] |
+| Free Stock API (TBD) | Daily OHLCV data, fundamentals | REST API (candidates: Alpha Vantage, Yahoo Finance, Polygon free tier) |
+| Interactive Brokers | Flow data, flow alerts | IB API via ib_insync or native TWS API |
+| Local Database | Persistence for all entities | SQLAlchemy async |
+
+### Cost Management (IB API)
+
+**Principles:**
+- Batch requests where possible
+- Cache aggressively - never re-fetch data we have
+- Log every IB API call with timestamp for auditing
+- Implement request budgets per run (configurable max calls)
+- Prefer "pull what we need" over "sync everything"
+
+**Request Budget Pattern:**
+```python
+# COST: IB API call - counts against daily budget
+with api_budget.track("flow_alerts"):
+    alerts = await ib_client.get_flow_alerts(symbols)
+```
 <!-- USER CONTENT END: architecture -->
 
 ---
@@ -344,13 +458,62 @@ For each new/modified feature:
 <!-- END CONDITIONAL -->
 
 <!-- USER CONTENT START: workflows -->
-### CI/CD Conventions
+### CLI Command Structure (Planned)
 
-[Describe your CI/CD pipeline, branch strategies, deployment process]
+```bash
+# Data fetching
+ib-picker fetch stocks              # Fetch stock data for basket
+ib-picker fetch flows               # Fetch IB flow data (COST: uses API budget)
+ib-picker fetch alerts              # Fetch IB flow alerts (COST: uses API budget)
 
-### Deployment Considerations
+# Analysis
+ib-picker analyze                   # Run current strategy, output signals
+ib-picker analyze --strategy=NAME   # Run specific strategy
 
-[Environment-specific configs, feature flags, rollback procedures]
+# Backtesting
+ib-picker backtest --strategy=NAME --from=DATE --to=DATE
+ib-picker backtest --compare=STRAT1,STRAT2  # Compare strategies
+
+# Data management
+ib-picker db status                 # Show data coverage
+ib-picker db export                 # Export for analysis
+ib-picker config show               # Show current configuration
+ib-picker config set KEY VALUE      # Update configuration
+```
+
+### Development Workflow
+
+1. **TDD Cycle:**
+   - Write failing test for new behavior
+   - Implement minimum code to pass
+   - Refactor with tests green
+   - Commit with descriptive message
+
+2. **Adding a New Strategy:**
+   - Create test file: `tests/unit/analysis/test_strategy_name.py`
+   - Define expected behavior with test cases
+   - Implement in `src/ib_daily_picker/analysis/strategies/`
+   - Add to strategy registry
+   - Run backtest to validate
+
+3. **Adding New Data Source:**
+   - ADR required: document API choice and alternatives
+   - Create fetcher with interface matching existing pattern
+   - Add comprehensive mocks/fixtures
+   - Integration test with recorded responses
+
+### Environment Configuration
+
+```bash
+# .env (not committed)
+IB_GATEWAY_HOST=127.0.0.1
+IB_GATEWAY_PORT=4001
+IB_CLIENT_ID=1
+STOCK_API_KEY=xxx              # If API requires key
+DATABASE_URL=sqlite:///data/picker.db
+IB_API_BUDGET_DAILY=100        # Max IB API calls per day
+LOG_LEVEL=INFO
+```
 <!-- USER CONTENT END: workflows -->
 
 ---
@@ -380,20 +543,24 @@ Entry Format:
 -->
 
 <!-- USER CONTENT START: learnings -->
-### [YYYY-MM-DD] - Example: API Rate Limiting Gotcha
+<!-- Learnings will be captured here as the project develops -->
+<!-- Example format preserved for reference:
 
-**Context:** Implementing batch data sync feature
+### [YYYY-MM-DD] - IB API Rate Limiting Discovery
 
-**Discovery:** The external API has undocumented rate limits of 100 req/min. Discovered when production sync started failing at scale.
+**Context:** Implementing flow alert fetching
 
-**Impact:** Need to implement exponential backoff and request queuing for all external API calls.
+**Discovery:** IB API has undocumented throttling beyond the documented rate limits.
+Rapid sequential calls trigger temporary blocks.
+
+**Impact:** Implement request spacing (min 100ms between calls) and exponential backoff.
 
 **References:**
-- `src/services/api-client.ts:45`
-- PR #123
-- ADR-007
+- `src/ib_daily_picker/fetchers/ib_client.py:XX`
+- ADR-XXX
 
-**Tags:** #gotcha #api #performance
+**Tags:** #gotcha #api #cost
+-->
 <!-- USER CONTENT END: learnings -->
 
 ### Known Issues & Technical Debt
@@ -401,13 +568,19 @@ Entry Format:
 <!-- USER CONTENT START: tech_debt -->
 | Issue | Severity | Context | Remediation |
 |-------|----------|---------|-------------|
-| [ISSUE] | High/Med/Low | [Why it exists] | [Plan to fix] |
+| Free API selection | Med | Need to evaluate options during planning | ADR after /plan-1a-explore |
+| DB choice (SQLite vs PG) | Low | Start simple, may need scale | ADR if migrating |
+| IB API auth complexity | Med | TWS/Gateway setup is manual | Document in README |
 <!-- USER CONTENT END: tech_debt -->
 
 ### Post-Implementation Notes
 
 <!-- USER CONTENT START: post_impl -->
-<!-- Add notes after major implementations about what worked, what didn't -->
+### 2026-01-26 - Project Initialization
+
+- CLAUDE.md customized for Python CLI with TDD
+- Architecture is planned but not validated - run /plan commands to refine
+- Key decisions deferred to ADRs: stock API choice, database choice, strategy interface
 <!-- USER CONTENT END: post_impl -->
 
 ---
@@ -440,11 +613,16 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 
 **Examples:**
 ```
-feat(auth): add OAuth2 login flow
-fix(api): handle null response from user endpoint
-refactor(utils): extract date formatting to shared module
-docs(readme): update installation instructions
+feat(fetcher): add Alpha Vantage stock data client
+feat(analysis): implement momentum crossover strategy
+fix(ib-client): handle connection timeout gracefully
+refactor(store): extract repository pattern for stocks
+test(backtest): add edge cases for market holidays
+docs(readme): document IB Gateway setup
 ```
+
+**Scopes for this project:**
+`cli`, `fetcher`, `store`, `analysis`, `backtest`, `ib-client`, `config`, `models`
 
 ### Appendix B: Complexity Scoring Reference
 
@@ -501,7 +679,23 @@ Use CS 1-5 instead of time estimates:
 <!-- END CONDITIONAL -->
 
 <!-- USER CONTENT START: extensions -->
-<!-- Add project-specific extensions here -->
+**CLI Output Conventions:**
+- Human-readable by default, `--json` flag for machine output
+- Progress indicators for long operations (fetching, backtesting)
+- Color-coded signals: green=buy, red=avoid, yellow=watch
+- Verbose mode (`-v`) shows API call details and timing
+
+**Configuration Hierarchy:**
+1. CLI flags (highest priority)
+2. Environment variables
+3. Config file (`~/.ib-picker/config.toml` or project `.env`)
+4. Defaults (lowest priority)
+
+**Financial Data Conventions:**
+- Always display prices with 2 decimal places
+- Percentages with 2 decimal places and % suffix
+- Dates in ISO format (YYYY-MM-DD) in output
+- Timestamps include timezone indicator
 <!-- USER CONTENT END: extensions -->
 
 ---

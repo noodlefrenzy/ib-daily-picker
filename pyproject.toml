@@ -1,0 +1,108 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ib-daily-picker"
+version = "0.1.0"
+description = "A Python CLI tool that identifies promising stock opportunities by correlating market flow data with price action"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Developer" }]
+keywords = ["stocks", "trading", "options", "flow", "analysis"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business :: Financial :: Investment",
+]
+dependencies = [
+    "typer>=0.9.0",
+    "rich>=13.0.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "yfinance>=0.2.0",
+    "finnhub-python>=2.4.0",
+    "duckdb>=0.10.0",
+    "httpx>=0.26.0",
+    "requests-cache>=1.1.0",
+    "instructor>=1.0.0",
+    "pyyaml>=6.0.0",
+    "toml>=0.10.0",
+    "pandas>=2.0.0",
+    "numpy>=1.24.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.0.0",
+    "ruff>=0.2.0",
+    "mypy>=1.8.0",
+    "freezegun>=1.2.0",
+    "types-toml>=0.10.0",
+    "pandas-stubs>=2.0.0",
+]
+
+[project.scripts]
+ib-picker = "ib_daily_picker.cli:app"
+
+[project.urls]
+Repository = "https://github.com/user/ib-daily-picker"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ib_daily_picker"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "-v"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+    "ARG",    # flake8-unused-arguments
+    "SIM",    # flake8-simplify
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "B008",   # do not perform function calls in argument defaults
+    "B904",   # raise without from inside except
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["ib_daily_picker"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = [
+    "yfinance.*",
+    "finnhub.*",
+    "duckdb.*",
+    "instructor.*",
+]
+ignore_missing_imports = true

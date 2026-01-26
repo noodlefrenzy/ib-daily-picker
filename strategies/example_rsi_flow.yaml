@@ -1,0 +1,71 @@
+# RSI Momentum with Flow Confirmation Strategy
+#
+# This strategy identifies oversold conditions using RSI and confirms
+# with bullish options flow before generating a buy signal.
+
+strategy:
+  name: "RSI Momentum with Flow Confirmation"
+  version: "1.0.0"
+  description: "Buy when RSI is oversold and bullish flow is present"
+  author: "IB Daily Picker"
+  tags: ["momentum", "flow", "mean-reversion"]
+
+indicators:
+  - name: "rsi_14"
+    type: "RSI"
+    params:
+      period: 14
+      source: "close"
+
+  - name: "sma_50"
+    type: "SMA"
+    params:
+      period: 50
+      source: "close"
+
+  - name: "atr_14"
+    type: "ATR"
+    params:
+      period: 14
+
+entry:
+  conditions:
+    - type: "indicator_threshold"
+      indicator: "rsi_14"
+      operator: "lt"
+      value: 35
+
+    - type: "indicator_threshold"
+      indicator: "rsi_14"
+      operator: "gt"
+      value: 20
+
+    - type: "flow_signal"
+      direction: "bullish"
+      min_premium: 100000
+      recency_minutes: 60
+
+  logic: "all"
+
+exit:
+  take_profit:
+    type: "percentage"
+    value: 5.0
+
+  stop_loss:
+    type: "atr_multiple"
+    value: 2.0
+    multiplier: 2.0
+
+  trailing_stop:
+    type: "percentage"
+    value: 3.0
+
+risk:
+  profile: "moderate"
+  min_risk_reward: 2.0
+
+filters:
+  min_volume: 1000000
+  min_price: 10.0
+  max_price: 500.0

@@ -518,37 +518,38 @@ ib-picker config set KEY VALUE      # Update configuration
 
 **Anti-pattern:** Accumulating all work and committing only when asked "is this committed?"
 
-### Handling Delayed/Timed Requests (LIMITATION)
+### Handling Delayed/Timed Requests
 
 **When user asks "wait N minutes, then do X":**
 
-The background task system (`run_in_background`) does NOT support autonomous continuation. Setting a timer and expecting automatic follow-up will fail silently - the timer completes but no action is taken.
+Use a **blocking** approach, not background execution:
 
-**What actually happens:**
-1. Background `sleep` command runs successfully
-2. Task completes and result is available
-3. **Nothing triggers the follow-up work** - requires user interaction
+```python
+# CORRECT: Blocking wait - continues automatically after timer
+Bash: sleep 2400  # with timeout=2400000 (40 min)
+# Then continue with the work immediately
 
-**Correct approach for delayed work:**
+# WRONG: Background wait - does NOT auto-continue
+Bash: sleep 2400  # with run_in_background=true
+# Timer completes but nothing triggers follow-up
+```
 
-1. **Inform the user of the limitation:**
-   ```
-   "I'll set a timer, but I cannot autonomously continue after it expires.
-   When you return, say 'continue' and I'll proceed with [the work]."
-   ```
+**Why blocking works:** A blocking call keeps the conversation "turn" open. When the command completes, execution continues naturally with the follow-up work.
 
-2. **Document the pending work clearly:**
-   - State exactly what will be done when user returns
-   - Keep context in the conversation so follow-up is seamless
+**Why background fails:** Background tasks return immediately and mark the task as complete later, but there's no callback mechanism. You must explicitly poll with `TaskOutput` to check completion.
 
-3. **For time-sensitive automation**, suggest alternatives:
-   - External scheduler (cron, Task Scheduler)
-   - CI/CD scheduled workflow
-   - Shell script with `sleep && command`
+**Correct pattern:**
+```bash
+# Set appropriate timeout (ms) for the wait duration
+sleep 2400  # timeout=2400000, then continue with work
+```
 
-**Anti-pattern:** Setting a background timer and assuming work will happen automatically.
+**If the wait is very long (>10 min)**, consider:
+1. Asking user if they want to wait or return later
+2. Using `TaskOutput` with `block=true` to wait for a background task
+3. Breaking work into "set timer" and "when you return, say 'continue'"
 
-**Why this matters:** Users expect "wait then do" to work like a reminder. Failing silently wastes their time and erodes trust.
+**Anti-pattern:** Using `run_in_background` for a timer and assuming work happens automatically.
 
 ### Development Workflow
 
@@ -639,27 +640,28 @@ Entry Format:
 
 **Tags:** #antipattern #process #gotcha
 
-### 2026-01-27 - Background Task Timer Does Not Trigger Continuation
+### 2026-01-27 - Blocking vs Background for Timed Requests
 
 **Context:** User requested "wait 40 minutes and then add a sector flag to the fetch command."
 
-**Discovery:** Background tasks (`run_in_background`) complete successfully but do NOT trigger any follow-up action. The timer expired, but I took no action until the user returned and asked why.
+**Discovery:** I incorrectly used `run_in_background` for the sleep, which returns immediately and doesn't auto-continue. The correct approach is a **blocking** call with appropriate timeout.
 
-**What happened:**
-1. Ran `sleep 2400` in background - completed successfully
-2. No mechanism exists to "wake up" and continue work
-3. User returned hours later to find nothing done
+**What I did wrong:**
+1. Used `run_in_background=true` for the sleep command
+2. This returns immediately - the timer runs but nothing triggers follow-up
+3. Rationalized it as a "limitation" when it was actually a wrong tool choice
 
-**Impact:**
-- Must inform users that delayed requests require their return to trigger continuation
-- Cannot promise "I'll do X after Y minutes" as autonomous behavior
-- Need to set clear expectations about this limitation
+**What I should have done:**
+```bash
+sleep 2400  # with timeout=2400000 (40 min), NO run_in_background
+# Then immediately continue with the sector flag implementation
+```
 
-**Root Cause:** Assumed background task completion would trigger a callback or continuation. It doesn't - it just marks the task as complete and waits for polling.
+A blocking call keeps the turn open. When it completes, I continue working.
 
-**Remediation:** Added "Handling Delayed/Timed Requests" section to CLAUDE.md documenting this limitation and correct approach.
+**Root Cause:** Chose background execution without thinking through the execution model. Background tasks require explicit polling; blocking tasks continue naturally.
 
-**Tags:** #gotcha #limitation #async
+**Tags:** #gotcha #async #execution-model
 
 <!-- Example format preserved for reference:
 

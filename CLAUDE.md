@@ -17,13 +17,12 @@ last_updated: "2026-01-26"
 A Python CLI tool that identifies promising stock opportunities by correlating market flow data with price action.
 
 **Core Workflow:**
-1. Fetch and store financial data for a configurable basket of stocks (free API)
-2. Query Interactive Brokers API for flow/flow alerts (cost-conscious, parsimonious usage)
+1. Fetch and store financial data for a configurable basket of stocks (yfinance, free)
+2. Query Unusual Whales API for flow data and alerts
 3. Analyze flows against stock data to surface potential buys
 4. Store all data (stocks, flows, alerts) to enable backtesting and strategy iteration
 
 **Key Constraints:**
-- IB API calls are metered/costly - minimize requests, cache aggressively
 - Historical data storage enables counterfactual analysis without re-fetching
 - Strategies should be pluggable for backtesting against historical data
 <!-- USER CONTENT END: overview -->
@@ -315,7 +314,6 @@ related:
 - Use `# TODO:` with ticket/issue reference
 - Use `# HACK:` with explanation and remediation plan
 - Use `# PERF:` for performance-critical sections
-- Use `# COST:` for IB API calls to track metered usage
 
 ---
 
@@ -328,8 +326,8 @@ related:
 
 ```
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│  Stock API  │     │   IB API    │     │  Database   │
-│   (free)    │     │  (metered)  │     │  (local)    │
+│  Stock API  │     │   UW API    │     │  Database   │
+│  (yfinance) │     │   (flow)    │     │  (local)    │
 └──────┬──────┘     └──────┬──────┘     └──────┬──────┘
        │                   │                   │
        └─────────┬─────────┴─────────┬─────────┘
@@ -405,25 +403,9 @@ ib-daily-picker/
 
 | External System | Purpose | Interface |
 |-----------------|---------|-----------|
-| Free Stock API (TBD) | Daily OHLCV data, fundamentals | REST API (candidates: Alpha Vantage, Yahoo Finance, Polygon free tier) |
-| Interactive Brokers | Flow data, flow alerts | IB API via ib_insync or native TWS API |
-| Local Database | Persistence for all entities | SQLAlchemy async |
-
-### Cost Management (IB API)
-
-**Principles:**
-- Batch requests where possible
-- Cache aggressively - never re-fetch data we have
-- Log every IB API call with timestamp for auditing
-- Implement request budgets per run (configurable max calls)
-- Prefer "pull what we need" over "sync everything"
-
-**Request Budget Pattern:**
-```python
-# COST: IB API call - counts against daily budget
-with api_budget.track("flow_alerts"):
-    alerts = await ib_client.get_flow_alerts(symbols)
-```
+| yfinance | Daily OHLCV data, fundamentals | Python library (free, unlimited) |
+| Unusual Whales | Flow data, flow alerts | REST API (subscription) |
+| Local Database | Persistence for all entities | DuckDB (analytics) + SQLite (state) |
 <!-- USER CONTENT END: architecture -->
 
 ---
@@ -466,8 +448,7 @@ For each new/modified feature:
 ```bash
 # Data fetching
 ib-picker fetch stocks              # Fetch stock data for basket
-ib-picker fetch flows               # Fetch IB flow data (COST: uses API budget)
-ib-picker fetch alerts              # Fetch IB flow alerts (COST: uses API budget)
+ib-picker fetch flows               # Fetch Unusual Whales flow data
 
 # Analysis
 ib-picker analyze                   # Run current strategy, output signals
@@ -576,12 +557,9 @@ sleep 2400  # timeout=2400000, then continue with work
 
 ```bash
 # .env (not committed)
-IB_GATEWAY_HOST=127.0.0.1
-IB_GATEWAY_PORT=4001
-IB_CLIENT_ID=1
-STOCK_API_KEY=xxx              # If API requires key
-DATABASE_URL=sqlite:///data/picker.db
-IB_API_BUDGET_DAILY=100        # Max IB API calls per day
+UNUSUAL_WHALES_API_KEY=xxx     # Required for flow data
+FINNHUB_API_KEY=xxx            # Optional fallback for stock data
+IB_PICKER_DATA_DIR=~/.ib-picker/data
 LOG_LEVEL=INFO
 ```
 <!-- USER CONTENT END: workflows -->

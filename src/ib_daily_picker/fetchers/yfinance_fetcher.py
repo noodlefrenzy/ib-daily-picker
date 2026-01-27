@@ -89,7 +89,6 @@ class YFinanceFetcher(BaseFetcher):
             # Convert DataFrame to OHLCV models
             ohlcv_list = self._df_to_ohlcv(symbol, df)
 
-            # COST: Log API call for tracking
             logger.info(
                 f"YFinance fetch: {symbol} returned {len(ohlcv_list)} records "
                 f"({start_date} to {end_date})"

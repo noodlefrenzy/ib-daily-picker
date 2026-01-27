@@ -28,7 +28,7 @@ import pytest
 from ib_daily_picker.config import (
     APISettings,
     BasketSettings,
-    CostSettings,
+    CacheSettings,
     DatabaseSettings,
     RiskProfile,
     Settings,
@@ -91,13 +91,12 @@ class TestAPISettings:
         assert settings.unusual_whales_api_key == "test_uw_key"
 
 
-class TestCostSettings:
-    """Test CostSettings configuration."""
+class TestCacheSettings:
+    """Test CacheSettings configuration."""
 
     def test_defaults(self) -> None:
-        """Cost settings should have conservative defaults."""
-        settings = CostSettings()
-        assert settings.uw_daily_budget == 100
+        """Cache settings should have sensible defaults."""
+        settings = CacheSettings()
         assert settings.flow_cache_ttl_minutes == 15
         assert settings.stock_cache_ttl_hours == 24
 
@@ -210,8 +209,8 @@ class TestSettingsIntegration:
                 finnhub_api_key="test_key",
                 llm_provider="ollama",
             ),
-            cost=CostSettings(
-                uw_daily_budget=50,
+            cache=CacheSettings(
+                flow_cache_ttl_minutes=30,
             ),
             risk=RiskProfile(
                 name="conservative",
@@ -227,6 +226,6 @@ class TestSettingsIntegration:
         assert settings.database.duckdb_path == temp_dir / "data" / "test.duckdb"
         assert settings.api.finnhub_api_key == "test_key"
         assert settings.api.llm_provider == "ollama"
-        assert settings.cost.uw_daily_budget == 50
+        assert settings.cache.flow_cache_ttl_minutes == 30
         assert settings.risk.name == "conservative"
         assert settings.basket.default_tickers == ["AAPL", "MSFT"]

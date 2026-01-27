@@ -33,7 +33,7 @@ def test_settings(temp_dir: Path) -> Generator[Settings, None, None]:
         strategies_dir=temp_dir / "strategies",
         database=Settings.model_fields["database"].default_factory(),
         api=Settings.model_fields["api"].default_factory(),
-        cost=Settings.model_fields["cost"].default_factory(),
+        cache=Settings.model_fields["cache"].default_factory(),
         risk=Settings.model_fields["risk"].default_factory(),
         basket=Settings.model_fields["basket"].default_factory(),
     )

@@ -121,9 +121,8 @@ def config_show(
     table.add_row("LLM Provider", settings.api.llm_provider)
     table.add_row("LLM Model", settings.api.llm_model)
 
-    # Cost settings
-    table.add_row("UW Daily Budget", str(settings.cost.uw_daily_budget))
-    table.add_row("Flow Cache TTL", f"{settings.cost.flow_cache_ttl_minutes} min")
+    # Cache settings
+    table.add_row("Flow Cache TTL", f"{settings.cache.flow_cache_ttl_minutes} min")
 
     # Risk settings
     table.add_row("Risk Profile", settings.risk.name)
@@ -143,7 +142,7 @@ def config_set(
 ) -> None:
     """Set a configuration value.
 
-    Supported keys: default_tickers, risk_profile, uw_daily_budget
+    Supported keys: default_tickers, risk_profile
     """
     import tomli_w
 
@@ -161,7 +160,6 @@ def config_set(
     key_map = {
         "default_tickers": ("basket", "default_tickers", lambda v: v.split(",")),
         "risk_profile": ("risk", "profile", str),
-        "uw_daily_budget": ("uw_daily_budget", None, int),
     }
 
     if key not in key_map:
@@ -541,10 +539,7 @@ def fetch_flows(
         ),
     ] = 100,
 ) -> None:
-    """Fetch flow alerts from Unusual Whales.
-
-    [yellow]COST: Uses API budget[/yellow]
-    """
+    """Fetch flow alerts from Unusual Whales."""
     import asyncio
     from decimal import Decimal as Dec
 
@@ -565,7 +560,6 @@ def fetch_flows(
     console.print("[cyan]Fetching flow alerts from Unusual Whales...[/cyan]")
     if symbols:
         console.print(f"  Symbols: {', '.join(symbols)}")
-    console.print("[yellow]This will use your Unusual Whales API budget.[/yellow]")
 
     fetcher = get_unusual_whales_fetcher()
 

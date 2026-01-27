@@ -8,7 +8,6 @@ ARCHITECTURE NOTES:
 - Secondary/fallback fetcher
 - Requires API key (free tier: 60 calls/min)
 - Limited to 1 year of data per call
-- COST: Tracks API calls against daily budget
 """
 
 from __future__ import annotations
@@ -124,7 +123,6 @@ class FinnhubFetcher(BaseFetcher):
             # Convert candles to OHLCV models
             ohlcv_list = self._candles_to_ohlcv(symbol, candles)
 
-            # COST: Log API call for tracking
             logger.info(
                 f"Finnhub fetch: {symbol} returned {len(ohlcv_list)} records "
                 f"({start_date} to {end_date})"

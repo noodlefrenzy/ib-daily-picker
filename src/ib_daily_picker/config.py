@@ -95,18 +95,11 @@ class APISettings(BaseSettings):
     )
 
 
-class CostSettings(BaseSettings):
-    """API cost management settings."""
+class CacheSettings(BaseSettings):
+    """Cache settings for API responses."""
 
-    model_config = SettingsConfigDict(env_prefix="IB_PICKER_COST_")
+    model_config = SettingsConfigDict(env_prefix="IB_PICKER_CACHE_")
 
-    # Daily API budget
-    uw_daily_budget: int = Field(
-        default=100,
-        description="Maximum Unusual Whales API calls per day",
-    )
-
-    # Cache TTL
     flow_cache_ttl_minutes: int = Field(
         default=15,
         description="Flow alert cache TTL in minutes",
@@ -188,7 +181,7 @@ class Settings(BaseSettings):
     # Nested settings
     database: DatabaseSettings = Field(default_factory=DatabaseSettings)
     api: APISettings = Field(default_factory=APISettings)
-    cost: CostSettings = Field(default_factory=CostSettings)
+    cache: CacheSettings = Field(default_factory=CacheSettings)
     risk: RiskProfile = Field(default_factory=RiskProfile)
     basket: BasketSettings = Field(default_factory=BasketSettings)
 

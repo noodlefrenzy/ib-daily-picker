@@ -195,18 +195,6 @@ class DatabaseManager:
                 )
             """)
 
-            # API budget tracking
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS api_budget (
-                    api_name TEXT NOT NULL,
-                    date TEXT NOT NULL,
-                    calls_made INTEGER DEFAULT 0,
-                    calls_limit INTEGER NOT NULL,
-                    last_call_at TEXT,
-                    PRIMARY KEY (api_name, date)
-                )
-            """)
-
             # Configuration overrides (per-session)
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS config_overrides (
@@ -314,72 +302,6 @@ class DatabaseManager:
                 (entity_type, entity_id, last_sync_at, last_sync_date, metadata),
             )
             conn.commit()
-
-    def check_api_budget(self, api_name: str, date: str) -> tuple[int, int]:
-        """Check API budget for a given date.
-
-        Args:
-            api_name: Name of the API
-            date: Date to check (YYYY-MM-DD)
-
-        Returns:
-            Tuple of (calls_made, calls_limit)
-        """
-        settings = self._settings
-
-        # Get limit from settings
-        limits = {
-            "unusual_whales": settings.cost.uw_daily_budget,
-            "finnhub": 60,  # Free tier limit
-        }
-        limit = limits.get(api_name, 100)
-
-        with self.sqlite() as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                SELECT calls_made, calls_limit
-                FROM api_budget
-                WHERE api_name = ? AND date = ?
-                """,
-                (api_name, date),
-            )
-            row = cursor.fetchone()
-            if row:
-                return (row["calls_made"], row["calls_limit"])
-            return (0, limit)
-
-    def increment_api_budget(
-        self, api_name: str, date: str, calls: int = 1
-    ) -> int:
-        """Increment API call count.
-
-        Args:
-            api_name: Name of the API
-            date: Date (YYYY-MM-DD)
-            calls: Number of calls to add
-
-        Returns:
-            New total calls made.
-        """
-        current, limit = self.check_api_budget(api_name, date)
-        new_total = current + calls
-
-        with self.sqlite() as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                INSERT INTO api_budget (api_name, date, calls_made, calls_limit, last_call_at)
-                VALUES (?, ?, ?, ?, datetime('now'))
-                ON CONFLICT(api_name, date) DO UPDATE SET
-                    calls_made = calls_made + ?,
-                    last_call_at = datetime('now')
-                """,
-                (api_name, date, calls, limit, calls),
-            )
-            conn.commit()
-
-        return new_total
 
     # --- Watchlist Management ---
 

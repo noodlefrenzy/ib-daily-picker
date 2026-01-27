@@ -5,10 +5,8 @@ PURPOSE: Fetch options flow alerts from Unusual Whales API
 DEPENDENCIES: httpx
 
 ARCHITECTURE NOTES:
-- COST: Metered API - tracks calls against daily budget
 - Rate limiting: 120 req/min
 - Cache TTL: 15-30 minutes for flow alerts
-- Logs all API calls with timing for cost tracking
 """
 
 from __future__ import annotations
@@ -39,10 +37,7 @@ UW_API_BASE = "https://api.unusualwhales.com"
 
 
 class UnusualWhalesFetcher:
-    """Fetcher for Unusual Whales flow alerts API.
-
-    COST: This fetcher uses metered API calls. All calls are tracked.
-    """
+    """Fetcher for Unusual Whales flow alerts API."""
 
     def __init__(self, api_key: str | None = None) -> None:
         """Initialize with optional API key.
@@ -98,45 +93,6 @@ class UnusualWhalesFetcher:
                 await asyncio.sleep(wait_time)
         self._last_request_time = datetime.utcnow()
 
-    def _track_api_call(self) -> None:
-        """Track API call against daily budget."""
-        from ib_daily_picker.store.database import get_db_manager
-
-        try:
-            db = get_db_manager()
-            today = date.today().isoformat()
-            new_count = db.increment_api_budget("unusual_whales", today)
-
-            settings = get_settings()
-            limit = settings.cost.uw_daily_budget
-
-            if new_count >= limit:
-                logger.warning(
-                    f"UW API budget exhausted: {new_count}/{limit} calls today"
-                )
-            elif new_count >= limit * 0.8:
-                logger.warning(
-                    f"UW API budget low: {new_count}/{limit} calls today"
-                )
-        except Exception as e:
-            logger.error(f"Failed to track API call: {e}")
-
-    def _check_budget(self) -> bool:
-        """Check if we have API budget remaining.
-
-        Returns:
-            True if budget available, False if exhausted
-        """
-        from ib_daily_picker.store.database import get_db_manager
-
-        try:
-            db = get_db_manager()
-            today = date.today().isoformat()
-            calls_made, limit = db.check_api_budget("unusual_whales", today)
-            return calls_made < limit
-        except Exception:
-            return True  # Allow if we can't check
-
     async def fetch_flow_alerts(
         self,
         symbols: list[str] | None = None,
@@ -144,8 +100,6 @@ class UnusualWhalesFetcher:
         limit: int = 100,
     ) -> FetchResult[FlowAlertBatch]:
         """Fetch recent flow alerts.
-
-        COST: This method makes an API call that counts against daily budget.
 
         Args:
             symbols: Filter by symbols (optional)
@@ -166,15 +120,6 @@ class UnusualWhalesFetcher:
                 errors=["Unusual Whales API key not configured"],
             )
 
-        if not self._check_budget():
-            return FetchResult(
-                data=None,
-                status=FetchStatus.RATE_LIMITED,
-                source=self.name,
-                started_at=started_at,
-                errors=["Daily API budget exhausted"],
-            )
-
         try:
             await self._rate_limit()
 
@@ -187,14 +132,10 @@ class UnusualWhalesFetcher:
             if min_premium:
                 params["min_premium"] = float(min_premium)
 
-            # COST: Log API call
             logger.info(f"UW API call: flow-alerts with params {params}")
 
             response = await client.get("/api/option-trades/flow-alerts", params=params)
             response.raise_for_status()
-
-            # Track the call
-            self._track_api_call()
 
             data = response.json()
             alerts = self._parse_alerts(data)
@@ -234,8 +175,6 @@ class UnusualWhalesFetcher:
         limit: int = 50,
     ) -> FetchResult[list[FlowAlert]]:
         """Fetch flow alerts for a specific symbol.
-
-        COST: This method makes an API call.
 
         Args:
             symbol: Stock ticker symbol

@@ -518,6 +518,38 @@ ib-picker config set KEY VALUE      # Update configuration
 
 **Anti-pattern:** Accumulating all work and committing only when asked "is this committed?"
 
+### Handling Delayed/Timed Requests (LIMITATION)
+
+**When user asks "wait N minutes, then do X":**
+
+The background task system (`run_in_background`) does NOT support autonomous continuation. Setting a timer and expecting automatic follow-up will fail silently - the timer completes but no action is taken.
+
+**What actually happens:**
+1. Background `sleep` command runs successfully
+2. Task completes and result is available
+3. **Nothing triggers the follow-up work** - requires user interaction
+
+**Correct approach for delayed work:**
+
+1. **Inform the user of the limitation:**
+   ```
+   "I'll set a timer, but I cannot autonomously continue after it expires.
+   When you return, say 'continue' and I'll proceed with [the work]."
+   ```
+
+2. **Document the pending work clearly:**
+   - State exactly what will be done when user returns
+   - Keep context in the conversation so follow-up is seamless
+
+3. **For time-sensitive automation**, suggest alternatives:
+   - External scheduler (cron, Task Scheduler)
+   - CI/CD scheduled workflow
+   - Shell script with `sleep && command`
+
+**Anti-pattern:** Setting a background timer and assuming work will happen automatically.
+
+**Why this matters:** Users expect "wait then do" to work like a reminder. Failing silently wastes their time and erodes trust.
+
 ### Development Workflow
 
 1. **TDD Cycle:**
@@ -606,6 +638,28 @@ Entry Format:
 - Commit 1110978 (the problematic monolithic commit)
 
 **Tags:** #antipattern #process #gotcha
+
+### 2026-01-27 - Background Task Timer Does Not Trigger Continuation
+
+**Context:** User requested "wait 40 minutes and then add a sector flag to the fetch command."
+
+**Discovery:** Background tasks (`run_in_background`) complete successfully but do NOT trigger any follow-up action. The timer expired, but I took no action until the user returned and asked why.
+
+**What happened:**
+1. Ran `sleep 2400` in background - completed successfully
+2. No mechanism exists to "wake up" and continue work
+3. User returned hours later to find nothing done
+
+**Impact:**
+- Must inform users that delayed requests require their return to trigger continuation
+- Cannot promise "I'll do X after Y minutes" as autonomous behavior
+- Need to set clear expectations about this limitation
+
+**Root Cause:** Assumed background task completion would trigger a callback or continuation. It doesn't - it just marks the task as complete and waits for polling.
+
+**Remediation:** Added "Handling Delayed/Timed Requests" section to CLAUDE.md documenting this limitation and correct approach.
+
+**Tags:** #gotcha #limitation #async
 
 <!-- Example format preserved for reference:
 

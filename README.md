@@ -80,9 +80,14 @@ ib-picker config show
 ### Data Fetching
 
 ```bash
-# Fetch stock price data
+# Fetch stock price data by ticker
 ib-picker fetch stocks --tickers AAPL,MSFT,GOOGL
-ib-picker fetch stocks --sector Technology --limit 50
+
+# Fetch by sector name
+ib-picker fetch stocks --sector Technology --limit 20
+
+# Fetch stocks in the same sector as a reference ticker
+ib-picker fetch stocks --same-sector-as NVDA --limit 10
 
 # Fetch flow alerts (requires Unusual Whales API key)
 ib-picker fetch flows --tickers AAPL,MSFT
@@ -91,6 +96,13 @@ ib-picker fetch flows --min-premium 100000
 # Check data coverage
 ib-picker fetch status
 ```
+
+**Available sectors:** Technology, Consumer Cyclical, Healthcare, Financial, Communication Services, Consumer Defensive, Energy, Industrials, Basic Materials, Real Estate, Utilities
+
+**Fetch status meanings:**
+- `success` (green) - New data fetched and stored
+- `up_to_date` (yellow) - Data already current, no new data available yet
+- `not_found` (red) - Ticker is invalid or not found
 
 ### Strategy Management
 

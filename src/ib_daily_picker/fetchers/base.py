@@ -30,6 +30,7 @@ class FetchStatus(str, Enum):
     ERROR = "error"
     RATE_LIMITED = "rate_limited"
     NOT_FOUND = "not_found"
+    UP_TO_DATE = "up_to_date"  # No new data available (already current)
 
 
 T = TypeVar("T")

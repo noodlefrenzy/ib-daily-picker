@@ -126,6 +126,21 @@ class StockDataFetcher:
                     last_sync_date=end_date.isoformat(),
                 )
 
+        # Detect "no new data" vs "invalid ticker" for incremental fetches
+        if result.status == FetchStatus.NOT_FOUND and incremental and latest is not None:
+            # We have existing data but API returned nothing for the delta period
+            # This likely means no new trading data available yet (weekend, holiday, market not closed)
+            days_since_latest = (end_date - latest).days
+            if days_since_latest <= 5:  # Within a reasonable gap (weekend + buffer)
+                logger.info(f"{symbol}: No new data available (latest: {latest})")
+                existing = repo.get_ohlcv(symbol, start_date - timedelta(days=5*365), latest)
+                return FetchResult(
+                    data=existing,
+                    status=FetchStatus.UP_TO_DATE,
+                    source="cache",
+                    warnings=[f"No new data since {latest} (data may not be available yet)"],
+                )
+
         return result
 
     async def fetch_and_store_batch(

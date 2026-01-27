@@ -428,6 +428,9 @@ def fetch_stocks(
 
     results = asyncio.run(run_fetch())
 
+    # Import status enum for comparison
+    from ib_daily_picker.fetchers.base import FetchStatus
+
     # Summary table
     table = Table(title="Fetch Results")
     table.add_column("Symbol", style="cyan")
@@ -436,8 +439,18 @@ def fetch_stocks(
     table.add_column("Source")
 
     success_count = 0
+    up_to_date_count = 0
     for symbol, result in results.items():
-        status_style = "green" if result.is_success else "red"
+        # Color code: green=success, yellow=up_to_date, red=error
+        if result.status == FetchStatus.UP_TO_DATE:
+            status_style = "yellow"
+            up_to_date_count += 1
+        elif result.is_success:
+            status_style = "green"
+            success_count += 1
+        else:
+            status_style = "red"
+
         record_count = len(result.data) if result.data else 0
         table.add_row(
             symbol,
@@ -445,13 +458,21 @@ def fetch_stocks(
             str(record_count),
             result.source,
         )
-        if result.is_success:
-            success_count += 1
 
     console.print(table)
-    console.print(
-        f"\n[green]Successfully fetched {success_count}/{len(ticker_list)} tickers[/green]"
-    )
+
+    # Summary message
+    total_ok = success_count + up_to_date_count
+    if up_to_date_count > 0:
+        console.print(
+            f"\n[green]Fetched {success_count} new[/green], "
+            f"[yellow]{up_to_date_count} already up to date[/yellow] "
+            f"(total: {total_ok}/{len(ticker_list)} tickers)"
+        )
+    else:
+        console.print(
+            f"\n[green]Successfully fetched {success_count}/{len(ticker_list)} tickers[/green]"
+        )
 
 
 @fetch_app.command("flows")

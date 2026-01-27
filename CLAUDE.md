@@ -65,6 +65,47 @@ mypy src/                     # Type checking
 <!-- REQUIRED -->
 ## Core Guidance
 
+### Assumption Validation (CRITICAL)
+
+**When the user provides constraints, requirements, or claims about external systems, VERIFY them before designing around them.**
+
+**Verifiable assumptions include:**
+- API pricing models (per-call vs subscription vs free)
+- API rate limits and quotas
+- Data availability and formats
+- Third-party service capabilities
+- Technology constraints ("X can't do Y")
+- Cost structures
+
+**Verification process:**
+1. **Identify** assumptions in user requirements that affect architecture
+2. **Flag** which ones are verifiable via documentation, web search, or API exploration
+3. **Verify** using WebSearch, WebFetch, or direct API documentation
+4. **Report back** before proceeding with design:
+
+```
+## Assumption Check
+
+| Assumption | Source | Verified | Finding |
+|------------|--------|----------|---------|
+| UW API is per-call billing | User constraint | ❌ INCORRECT | Monthly subscription model |
+| yfinance has no rate limits | User constraint | ✅ Correct | Unlimited free access |
+| Finnhub free tier is 60/min | User constraint | ✅ Correct | Documented in API docs |
+```
+
+**When to do this:**
+- During `/plan-1a-explore` research phase
+- Before any `/plan-3-architect` planning
+- When user states something as fact that would significantly affect design
+- When building features around external service constraints
+
+**How to challenge respectfully:**
+- "Before I design around [assumption], let me verify it..."
+- "I found something different in the docs - [X] is actually [Y]. Want me to proceed with the corrected understanding?"
+- "Your constraint about [X] appears to be [correct/incorrect] based on [source]. This affects [what]."
+
+**Why this matters:** Building systems around incorrect assumptions creates technical debt that's expensive to remove later (see: budget tracking removal).
+
 ### Code Style Principles
 
 **General:**
@@ -640,6 +681,32 @@ A blocking call keeps the turn open. When it completes, I continue working.
 **Root Cause:** Chose background execution without thinking through the execution model. Background tasks require explicit polling; blocking tasks continue naturally.
 
 **Tags:** #gotcha #async #execution-model
+
+### 2026-01-27 - Unverified User Assumption Led to Wasted Architecture
+
+**Context:** User's initial requirements stated "IB API calls are metered/costly - minimize requests" and "parsimoniously use the Unusual Whales API." I built an entire budget tracking system around this.
+
+**Discovery:** The Unusual Whales API is a **monthly subscription**, not pay-per-call. The budget tracking system (daily call limits, budget exhaustion checks, api_budget table) was unnecessary.
+
+**What I built that had to be removed:**
+- `CostSettings.uw_daily_budget` configuration
+- `api_budget` SQLite table
+- `check_api_budget()` and `increment_api_budget()` methods
+- Budget checking in `UnusualWhalesFetcher`
+- CLI display of "UW Daily Budget"
+- Documentation about cost management
+
+**What I should have done:**
+1. Flagged "UW API is metered/costly" as a verifiable assumption
+2. Used WebSearch or WebFetch to check UW pricing model
+3. Reported back: "UW API appears to be subscription-based, not per-call. Should I still build budget tracking?"
+4. Only then proceeded with the correct architecture
+
+**Root Cause:** Accepted user constraints as ground truth without verification. User assumptions about external APIs should be validated, not trusted blindly.
+
+**Remediation:** Added "Assumption Validation (CRITICAL)" section to Core Guidance with process for identifying, verifying, and reporting back on user assumptions.
+
+**Tags:** #antipattern #assumptions #architecture #technical-debt
 
 <!-- Example format preserved for reference:
 

@@ -226,6 +226,107 @@ fetch_app = typer.Typer(
 app.add_typer(fetch_app)
 
 
+def _get_sector_tickers(sector: str, limit: int = 20) -> list[str]:
+    """Get tickers for a given sector using yfinance screener.
+
+    Args:
+        sector: Sector name (e.g., "Technology", "Consumer Cyclical")
+        limit: Maximum number of tickers to return
+
+    Returns:
+        List of ticker symbols in that sector
+    """
+    import yfinance as yf
+
+    # Common tickers by sector for reliable lookup
+    # yfinance doesn't have a direct sector screener, so we use a curated list
+    # and filter by sector
+    sector_seeds: dict[str, list[str]] = {
+        "Technology": [
+            "AAPL", "MSFT", "GOOGL", "NVDA", "META", "AVGO", "ORCL", "CRM",
+            "ADBE", "AMD", "INTC", "QCOM", "TXN", "IBM", "NOW", "INTU",
+            "AMAT", "MU", "LRCX", "ADI", "SNPS", "CDNS", "KLAC", "MCHP",
+        ],
+        "Consumer Cyclical": [
+            "AMZN", "TSLA", "HD", "MCD", "NKE", "SBUX", "LOW", "TJX",
+            "BKNG", "CMG", "ORLY", "AZO", "ROST", "DHI", "LEN", "GM",
+            "F", "MAR", "HLT", "YUM", "DPZ", "DECK", "ULTA", "LULU",
+        ],
+        "Healthcare": [
+            "UNH", "JNJ", "LLY", "PFE", "ABBV", "MRK", "TMO", "ABT",
+            "DHR", "BMY", "AMGN", "MDT", "ISRG", "SYK", "GILD", "VRTX",
+            "REGN", "ZTS", "BDX", "CVS", "CI", "HUM", "ELV", "MCK",
+        ],
+        "Financial": [
+            "BRK-B", "JPM", "V", "MA", "BAC", "WFC", "GS", "MS",
+            "SPGI", "BLK", "C", "AXP", "SCHW", "CB", "MMC", "PGR",
+            "ICE", "CME", "AON", "MET", "AIG", "TRV", "ALL", "AFL",
+        ],
+        "Communication Services": [
+            "GOOG", "META", "NFLX", "DIS", "CMCSA", "VZ", "T", "TMUS",
+            "CHTR", "EA", "TTWO", "WBD", "PARA", "OMC", "IPG", "LYV",
+        ],
+        "Consumer Defensive": [
+            "WMT", "PG", "COST", "KO", "PEP", "PM", "MO", "MDLZ",
+            "CL", "GIS", "K", "KMB", "SYY", "HSY", "KR", "TGT",
+            "DG", "DLTR", "EL", "STZ", "KDP", "MKC", "CHD", "CLX",
+        ],
+        "Energy": [
+            "XOM", "CVX", "COP", "SLB", "EOG", "MPC", "PXD", "PSX",
+            "VLO", "OXY", "WMB", "KMI", "HAL", "DVN", "HES", "BKR",
+        ],
+        "Industrials": [
+            "CAT", "UNP", "RTX", "HON", "UPS", "BA", "DE", "LMT",
+            "GE", "MMM", "ADP", "CSX", "NSC", "FDX", "EMR", "ITW",
+            "ETN", "PH", "PCAR", "WM", "RSG", "JCI", "CARR", "GD",
+        ],
+        "Basic Materials": [
+            "LIN", "APD", "SHW", "ECL", "NEM", "FCX", "NUE", "DD",
+            "DOW", "PPG", "VMC", "MLM", "ALB", "CTVA", "CF", "MOS",
+        ],
+        "Real Estate": [
+            "PLD", "AMT", "EQIX", "CCI", "PSA", "SPG", "O", "WELL",
+            "DLR", "AVB", "EQR", "VTR", "ARE", "MAA", "UDR", "ESS",
+        ],
+        "Utilities": [
+            "NEE", "DUK", "SO", "D", "AEP", "SRE", "EXC", "XEL",
+            "PCG", "WEC", "ED", "ES", "AWK", "DTE", "FE", "PPL",
+        ],
+    }
+
+    # Normalize sector name (case-insensitive matching)
+    sector_lower = sector.lower()
+    matched_sector = None
+    for s in sector_seeds:
+        if s.lower() == sector_lower or sector_lower in s.lower():
+            matched_sector = s
+            break
+
+    if not matched_sector:
+        # Try to find tickers by checking a sample ticker's sector
+        console.print(f"[yellow]Unknown sector '{sector}', trying to discover...[/yellow]")
+        return []
+
+    seed_tickers = sector_seeds[matched_sector]
+
+    # Verify tickers are in the right sector and get additional info
+    valid_tickers = []
+    for ticker in seed_tickers[:limit]:
+        try:
+            t = yf.Ticker(ticker)
+            info = t.info
+            if info.get("sector", "").lower() == matched_sector.lower():
+                valid_tickers.append(ticker)
+        except Exception:
+            # Skip tickers that fail lookup
+            continue
+
+        if len(valid_tickers) >= limit:
+            break
+
+    return valid_tickers
+
+
 @fetch_app.command("stocks")
 def fetch_stocks(
     tickers: Annotated[
@@ -234,6 +335,14 @@ def fetch_stocks(
             "--tickers",
             "-t",
             help="Comma-separated list of tickers (default: use basket)",
+        ),
+    ] = None,
+    sector: Annotated[
+        Optional[str],
+        typer.Option(
+            "--sector",
+            "-S",
+            help="Fetch stocks from a sector (e.g., 'Technology', 'Consumer Cyclical')",
         ),
     ] = None,
     start_date: Annotated[
@@ -257,6 +366,14 @@ def fetch_stocks(
             help="Fetch full history (ignore existing data)",
         ),
     ] = False,
+    limit: Annotated[
+        int,
+        typer.Option(
+            "--limit",
+            "-n",
+            help="Max tickers when using --sector",
+        ),
+    ] = 20,
 ) -> None:
     """Fetch stock OHLCV data."""
     import asyncio
@@ -268,10 +385,19 @@ def fetch_stocks(
 
     settings = get_settings()
 
-    ticker_list = [
-        t.strip().upper()
-        for t in (tickers.split(",") if tickers else settings.basket.default_tickers)
-    ]
+    # Determine ticker list based on options
+    if sector:
+        console.print(f"[cyan]Looking up tickers in sector: {sector}[/cyan]")
+        ticker_list = _get_sector_tickers(sector, limit=limit)
+        if not ticker_list:
+            err_console.print(f"[red]No tickers found for sector: {sector}[/red]")
+            err_console.print("[dim]Available sectors: Technology, Consumer Cyclical, Healthcare, Financial, Communication Services, Consumer Defensive, Energy, Industrials, Basic Materials, Real Estate, Utilities[/dim]")
+            raise typer.Exit(1)
+        console.print(f"[green]Found {len(ticker_list)} tickers: {', '.join(ticker_list[:10])}{'...' if len(ticker_list) > 10 else ''}[/green]")
+    elif tickers:
+        ticker_list = [t.strip().upper() for t in tickers.split(",")]
+    else:
+        ticker_list = settings.basket.default_tickers
 
     # Parse dates
     start = date_type.fromisoformat(start_date) if start_date else None

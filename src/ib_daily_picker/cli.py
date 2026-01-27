@@ -327,6 +327,25 @@ def _get_sector_tickers(sector: str, limit: int = 20) -> list[str]:
     return valid_tickers
 
 
+def _get_ticker_sector(symbol: str) -> str | None:
+    """Look up the sector for a given ticker symbol.
+
+    Args:
+        symbol: Stock ticker symbol
+
+    Returns:
+        Sector name or None if not found
+    """
+    import yfinance as yf
+
+    try:
+        ticker = yf.Ticker(symbol.upper())
+        info = ticker.info
+        return info.get("sector")
+    except Exception:
+        return None
+
+
 @fetch_app.command("stocks")
 def fetch_stocks(
     tickers: Annotated[
@@ -343,6 +362,13 @@ def fetch_stocks(
             "--sector",
             "-S",
             help="Fetch stocks from a sector (e.g., 'Technology', 'Consumer Cyclical')",
+        ),
+    ] = None,
+    same_sector_as: Annotated[
+        Optional[str],
+        typer.Option(
+            "--same-sector-as",
+            help="Fetch stocks from the same sector as this ticker (e.g., AAPL, LVMUY)",
         ),
     ] = None,
     start_date: Annotated[
@@ -371,7 +397,7 @@ def fetch_stocks(
         typer.Option(
             "--limit",
             "-n",
-            help="Max tickers when using --sector",
+            help="Max tickers when using --sector or --same-sector-as",
         ),
     ] = 20,
 ) -> None:
@@ -386,7 +412,20 @@ def fetch_stocks(
     settings = get_settings()
 
     # Determine ticker list based on options
-    if sector:
+    if same_sector_as:
+        # Look up sector for the given ticker
+        console.print(f"[cyan]Looking up sector for: {same_sector_as.upper()}[/cyan]")
+        discovered_sector = _get_ticker_sector(same_sector_as)
+        if not discovered_sector:
+            err_console.print(f"[red]Could not determine sector for: {same_sector_as}[/red]")
+            raise typer.Exit(1)
+        console.print(f"[green]Found sector: {discovered_sector}[/green]")
+        ticker_list = _get_sector_tickers(discovered_sector, limit=limit)
+        if not ticker_list:
+            err_console.print(f"[red]No tickers found for sector: {discovered_sector}[/red]")
+            raise typer.Exit(1)
+        console.print(f"[green]Found {len(ticker_list)} tickers: {', '.join(ticker_list[:10])}{'...' if len(ticker_list) > 10 else ''}[/green]")
+    elif sector:
         console.print(f"[cyan]Looking up tickers in sector: {sector}[/cyan]")
         ticker_list = _get_sector_tickers(sector, limit=limit)
         if not ticker_list:

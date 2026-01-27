@@ -626,7 +626,12 @@ def fetch_flows(
 
 
 @fetch_app.command("status")
-def fetch_status() -> None:
+def fetch_status(
+    detailed: Annotated[
+        bool,
+        typer.Option("--detailed", "-d", help="Show per-ticker details"),
+    ] = False,
+) -> None:
     """Show data coverage and sync status."""
     from ib_daily_picker.store.database import get_db_manager
 
@@ -679,6 +684,51 @@ def fetch_status() -> None:
             table.add_row("Flow Alerts", "0", "-", "-")
 
     console.print(table)
+
+    # Detailed per-ticker view
+    if detailed:
+        console.print()
+        ticker_table = Table(title="Per-Ticker Details")
+        ticker_table.add_column("Symbol", style="cyan")
+        ticker_table.add_column("Rows", justify="right")
+        ticker_table.add_column("First Date", style="dim")
+        ticker_table.add_column("Last Date", style="yellow")
+        ticker_table.add_column("Days", justify="right")
+        ticker_table.add_column("Gaps", justify="right", style="red")
+
+        with db.duckdb() as conn:
+            # Get per-symbol stats
+            rows = conn.execute("""
+                SELECT
+                    symbol,
+                    COUNT(*) as rows,
+                    MIN(date) as first_date,
+                    MAX(date) as last_date,
+                    DATEDIFF('day', MIN(date), MAX(date)) + 1 as calendar_days
+                FROM ohlcv
+                GROUP BY symbol
+                ORDER BY symbol
+            """).fetchall()
+
+            for row in rows:
+                symbol, count, first_date, last_date, calendar_days = row
+                # Calculate trading day gaps (approximate - actual trading days ~252/year)
+                # If we have significantly fewer rows than expected trading days, flag it
+                expected_trading_days = int(calendar_days * 252 / 365) if calendar_days else 0
+                gap_count = max(0, expected_trading_days - count) if expected_trading_days > 0 else 0
+                gap_str = str(gap_count) if gap_count > 5 else "-"
+
+                ticker_table.add_row(
+                    symbol,
+                    str(count),
+                    str(first_date),
+                    str(last_date),
+                    str(calendar_days),
+                    gap_str,
+                )
+
+        console.print(ticker_table)
+        console.print(f"\n[dim]Gaps = estimated missing trading days (>5 shown)[/dim]")
 
 
 # =============================================================================
@@ -1703,10 +1753,15 @@ app.add_typer(db_app)
 
 
 @db_app.command("status")
-def db_status() -> None:
+def db_status(
+    detailed: Annotated[
+        bool,
+        typer.Option("--detailed", "-d", help="Show per-ticker details"),
+    ] = False,
+) -> None:
     """Show database status and statistics."""
     # Alias for fetch status
-    fetch_status()
+    fetch_status(detailed=detailed)
 
 
 @db_app.command("export")

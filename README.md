@@ -184,6 +184,66 @@ ib-picker db status
 ib-picker db export --format csv --output data_export/
 ```
 
+### Watchlist Management
+
+```bash
+# Add symbols to watchlist
+ib-picker watchlist add AAPL,MSFT,GOOGL
+ib-picker watchlist add NVDA --notes "GPU play" --tags "ai,semiconductor"
+
+# List watchlist
+ib-picker watchlist list
+
+# Remove from watchlist
+ib-picker watchlist remove AAPL
+
+# Clear entire watchlist
+ib-picker watchlist clear --force
+```
+
+### Earnings Calendar
+
+```bash
+# Check earnings for specific symbols
+ib-picker earnings check AAPL,MSFT,GOOGL --days 30
+
+# Check upcoming earnings from watchlist
+ib-picker earnings upcoming --days 14
+
+# Useful for avoiding trades around earnings
+ib-picker earnings check --days 7  # Uses watchlist if no symbols specified
+```
+
+### Scanning for Opportunities
+
+```bash
+# Scan watchlist with default strategy
+ib-picker scan
+
+# Scan specific tickers
+ib-picker scan --tickers AAPL,MSFT,GOOGL
+
+# Scan a sector
+ib-picker scan --sector Technology
+
+# Skip stocks with earnings within N days
+ib-picker scan --skip-earnings-within 7
+
+# Use a specific strategy
+ib-picker scan --strategy momentum
+
+# Output formats for automation
+ib-picker scan --output json >> ~/scan-results.jsonl  # JSONL for log aggregation
+ib-picker scan --output log                            # Simple log format for cron
+```
+
+**Scheduling scans with cron:**
+```bash
+# Add to crontab (crontab -e):
+# Run scan every weekday at 9:30 AM EST
+30 9 * * 1-5 /path/to/ib-picker scan --output log >> ~/ib-picker-scans.log 2>&1
+```
+
 ## Strategy Format
 
 Strategies are defined in YAML files. See `strategies/example_rsi_flow.yaml` for a complete example.

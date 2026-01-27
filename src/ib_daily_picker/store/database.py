@@ -216,6 +216,16 @@ class DatabaseManager:
                 )
             """)
 
+            # Watchlist
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS watchlist (
+                    symbol TEXT PRIMARY KEY,
+                    added_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    notes TEXT,
+                    tags TEXT
+                )
+            """)
+
             conn.commit()
 
     @contextmanager
@@ -370,6 +380,113 @@ class DatabaseManager:
             conn.commit()
 
         return new_total
+
+    # --- Watchlist Management ---
+
+    def watchlist_add(self, symbol: str, notes: str | None = None, tags: list[str] | None = None) -> bool:
+        """Add a symbol to the watchlist.
+
+        Args:
+            symbol: Stock ticker symbol
+            notes: Optional notes
+            tags: Optional list of tags
+
+        Returns:
+            True if added, False if already exists
+        """
+        import json
+        from datetime import datetime
+
+        with self.sqlite() as conn:
+            cursor = conn.cursor()
+            try:
+                cursor.execute(
+                    """
+                    INSERT INTO watchlist (symbol, added_at, notes, tags)
+                    VALUES (?, ?, ?, ?)
+                    """,
+                    (
+                        symbol.upper(),
+                        datetime.utcnow().isoformat(),
+                        notes,
+                        json.dumps(tags) if tags else None,
+                    ),
+                )
+                conn.commit()
+                return True
+            except sqlite3.IntegrityError:
+                return False
+
+    def watchlist_remove(self, symbol: str) -> bool:
+        """Remove a symbol from the watchlist.
+
+        Args:
+            symbol: Stock ticker symbol
+
+        Returns:
+            True if removed, False if not found
+        """
+        with self.sqlite() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "DELETE FROM watchlist WHERE symbol = ?",
+                (symbol.upper(),),
+            )
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def watchlist_list(self) -> list[dict]:
+        """Get all symbols in the watchlist.
+
+        Returns:
+            List of watchlist entries with symbol, added_at, notes, tags
+        """
+        import json
+
+        with self.sqlite() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT symbol, added_at, notes, tags FROM watchlist ORDER BY added_at DESC"
+            )
+            rows = cursor.fetchall()
+            return [
+                {
+                    "symbol": row["symbol"],
+                    "added_at": row["added_at"],
+                    "notes": row["notes"],
+                    "tags": json.loads(row["tags"]) if row["tags"] else [],
+                }
+                for row in rows
+            ]
+
+    def watchlist_clear(self) -> int:
+        """Clear all symbols from the watchlist.
+
+        Returns:
+            Number of symbols removed
+        """
+        with self.sqlite() as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM watchlist")
+            conn.commit()
+            return cursor.rowcount
+
+    def watchlist_contains(self, symbol: str) -> bool:
+        """Check if a symbol is in the watchlist.
+
+        Args:
+            symbol: Stock ticker symbol
+
+        Returns:
+            True if in watchlist
+        """
+        with self.sqlite() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT 1 FROM watchlist WHERE symbol = ?",
+                (symbol.upper(),),
+            )
+            return cursor.fetchone() is not None
 
 
 # Global database manager instance

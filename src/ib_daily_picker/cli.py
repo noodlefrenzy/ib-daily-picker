@@ -12,6 +12,7 @@ ARCHITECTURE NOTES:
 
 from __future__ import annotations
 
+from contextlib import nullcontext
 from pathlib import Path
 from typing import Annotated, Optional
 
@@ -1750,6 +1751,481 @@ def db_export(
             writer.writerows(result)
 
     console.print(f"[green]Exported {len(result)} rows to {output}[/green]")
+
+
+# =============================================================================
+# Watchlist Commands
+# =============================================================================
+watchlist_app = typer.Typer(
+    name="watchlist",
+    help="Manage your stock watchlist.",
+    no_args_is_help=True,
+)
+app.add_typer(watchlist_app)
+
+
+@watchlist_app.command("add")
+def watchlist_add(
+    symbols: Annotated[
+        str,
+        typer.Argument(help="Comma-separated list of ticker symbols to add"),
+    ],
+    notes: Annotated[
+        str | None,
+        typer.Option("--notes", "-n", help="Notes for the symbol(s)"),
+    ] = None,
+    tags: Annotated[
+        str | None,
+        typer.Option("--tags", "-t", help="Comma-separated tags"),
+    ] = None,
+) -> None:
+    """Add symbol(s) to your watchlist."""
+    from ib_daily_picker.store.database import get_db_manager
+
+    db = get_db_manager()
+    tag_list = [t.strip() for t in tags.split(",")] if tags else None
+
+    added = []
+    existed = []
+    for symbol in symbols.split(","):
+        symbol = symbol.strip().upper()
+        if db.watchlist_add(symbol, notes=notes, tags=tag_list):
+            added.append(symbol)
+        else:
+            existed.append(symbol)
+
+    if added:
+        console.print(f"[green]Added to watchlist:[/green] {', '.join(added)}")
+    if existed:
+        console.print(f"[yellow]Already in watchlist:[/yellow] {', '.join(existed)}")
+
+
+@watchlist_app.command("remove")
+def watchlist_remove(
+    symbols: Annotated[
+        str,
+        typer.Argument(help="Comma-separated list of ticker symbols to remove"),
+    ],
+) -> None:
+    """Remove symbol(s) from your watchlist."""
+    from ib_daily_picker.store.database import get_db_manager
+
+    db = get_db_manager()
+
+    removed = []
+    not_found = []
+    for symbol in symbols.split(","):
+        symbol = symbol.strip().upper()
+        if db.watchlist_remove(symbol):
+            removed.append(symbol)
+        else:
+            not_found.append(symbol)
+
+    if removed:
+        console.print(f"[green]Removed from watchlist:[/green] {', '.join(removed)}")
+    if not_found:
+        console.print(f"[yellow]Not in watchlist:[/yellow] {', '.join(not_found)}")
+
+
+@watchlist_app.command("list")
+def watchlist_list() -> None:
+    """List all symbols in your watchlist."""
+    from ib_daily_picker.store.database import get_db_manager
+    from rich.table import Table
+
+    db = get_db_manager()
+    entries = db.watchlist_list()
+
+    if not entries:
+        console.print("[dim]Watchlist is empty. Add symbols with: ib-picker watchlist add AAPL,MSFT[/dim]")
+        return
+
+    table = Table(title="Watchlist")
+    table.add_column("Symbol", style="cyan")
+    table.add_column("Added", style="dim")
+    table.add_column("Notes")
+    table.add_column("Tags")
+
+    for entry in entries:
+        tags_str = ", ".join(entry["tags"]) if entry["tags"] else ""
+        added_date = entry["added_at"][:10] if entry["added_at"] else ""
+        table.add_row(
+            entry["symbol"],
+            added_date,
+            entry["notes"] or "",
+            tags_str,
+        )
+
+    console.print(table)
+    console.print(f"[dim]Total: {len(entries)} symbols[/dim]")
+
+
+@watchlist_app.command("clear")
+def watchlist_clear(
+    force: Annotated[
+        bool,
+        typer.Option("--force", "-f", help="Skip confirmation"),
+    ] = False,
+) -> None:
+    """Clear all symbols from your watchlist."""
+    from ib_daily_picker.store.database import get_db_manager
+
+    if not force:
+        confirm = typer.confirm("Are you sure you want to clear your entire watchlist?")
+        if not confirm:
+            console.print("[dim]Cancelled.[/dim]")
+            return
+
+    db = get_db_manager()
+    count = db.watchlist_clear()
+    console.print(f"[green]Cleared {count} symbols from watchlist.[/green]")
+
+
+# =============================================================================
+# Earnings Commands
+# =============================================================================
+earnings_app = typer.Typer(
+    name="earnings",
+    help="Check earnings calendar for stocks.",
+    no_args_is_help=True,
+)
+app.add_typer(earnings_app)
+
+
+def _get_earnings_date(symbol: str) -> tuple[str | None, str | None]:
+    """Get next earnings date for a symbol using yfinance.
+
+    Returns:
+        Tuple of (earnings_date, earnings_time) where time is 'BMO', 'AMC', or None
+    """
+    import yfinance as yf
+
+    try:
+        ticker = yf.Ticker(symbol.upper())
+        calendar = ticker.calendar
+
+        if calendar is None:
+            return None, None
+
+        # yfinance can return either a dict or a DataFrame depending on version
+        if isinstance(calendar, dict):
+            # New format: dict with 'Earnings Date' as key containing a list
+            earnings_dates = calendar.get("Earnings Date")
+            if earnings_dates and len(earnings_dates) > 0:
+                next_date = earnings_dates[0]
+                if hasattr(next_date, "strftime"):
+                    return next_date.strftime("%Y-%m-%d"), None
+                return str(next_date), None
+        else:
+            # Old format: DataFrame with 'Earnings Date' as row index
+            if hasattr(calendar, "empty") and calendar.empty:
+                return None, None
+            if "Earnings Date" in calendar.index:
+                earnings_dates = calendar.loc["Earnings Date"]
+                if len(earnings_dates) > 0:
+                    next_date = earnings_dates.iloc[0]
+                    if hasattr(next_date, "strftime"):
+                        return next_date.strftime("%Y-%m-%d"), None
+                    return str(next_date), None
+
+        return None, None
+    except Exception:
+        return None, None
+
+
+@earnings_app.command("check")
+def earnings_check(
+    symbols: Annotated[
+        str | None,
+        typer.Argument(help="Comma-separated list of ticker symbols (uses watchlist if not provided)"),
+    ] = None,
+    days: Annotated[
+        int,
+        typer.Option("--days", "-d", help="Check for earnings within N days"),
+    ] = 14,
+) -> None:
+    """Check upcoming earnings for specified symbols or watchlist."""
+    from datetime import datetime, timedelta
+
+    from ib_daily_picker.store.database import get_db_manager
+    from rich.table import Table
+
+    # Get symbols from argument or watchlist
+    if symbols:
+        ticker_list = [s.strip().upper() for s in symbols.split(",")]
+    else:
+        db = get_db_manager()
+        entries = db.watchlist_list()
+        if not entries:
+            console.print("[yellow]No symbols provided and watchlist is empty.[/yellow]")
+            console.print("[dim]Usage: ib-picker earnings check AAPL,MSFT[/dim]")
+            console.print("[dim]   or: ib-picker watchlist add AAPL,MSFT && ib-picker earnings check[/dim]")
+            return
+        ticker_list = [e["symbol"] for e in entries]
+        console.print(f"[dim]Checking watchlist ({len(ticker_list)} symbols)...[/dim]")
+
+    today = datetime.now().date()
+    cutoff = today + timedelta(days=days)
+
+    results = []
+    with console.status("[bold cyan]Fetching earnings dates..."):
+        for symbol in ticker_list:
+            earnings_date, earnings_time = _get_earnings_date(symbol)
+            if earnings_date:
+                try:
+                    ed = datetime.strptime(earnings_date, "%Y-%m-%d").date()
+                    days_until = (ed - today).days
+                    if days_until >= 0:  # Include today and future
+                        results.append({
+                            "symbol": symbol,
+                            "date": earnings_date,
+                            "time": earnings_time or "Unknown",
+                            "days_until": days_until,
+                            "within_window": days_until <= days,
+                        })
+                except ValueError:
+                    pass
+
+    # Sort by date
+    results.sort(key=lambda x: x["date"])
+
+    # Filter to those within window
+    within_window = [r for r in results if r["within_window"]]
+    outside_window = [r for r in results if not r["within_window"]]
+
+    if within_window:
+        table = Table(title=f"Earnings Within {days} Days")
+        table.add_column("Symbol", style="cyan")
+        table.add_column("Date", style="yellow")
+        table.add_column("Time")
+        table.add_column("Days Until", justify="right")
+
+        for r in within_window:
+            days_str = "TODAY" if r["days_until"] == 0 else str(r["days_until"])
+            style = "bold red" if r["days_until"] <= 3 else None
+            table.add_row(r["symbol"], r["date"], r["time"], days_str, style=style)
+
+        console.print(table)
+    else:
+        console.print(f"[green]No earnings within {days} days for checked symbols.[/green]")
+
+    if outside_window:
+        console.print(f"\n[dim]Other upcoming earnings ({len(outside_window)} symbols):[/dim]")
+        for r in outside_window[:5]:  # Show first 5
+            console.print(f"  [dim]{r['symbol']}: {r['date']} ({r['days_until']} days)[/dim]")
+        if len(outside_window) > 5:
+            console.print(f"  [dim]... and {len(outside_window) - 5} more[/dim]")
+
+    no_data = [s for s in ticker_list if s not in [r["symbol"] for r in results]]
+    if no_data:
+        console.print(f"\n[dim]No earnings data available for: {', '.join(no_data[:10])}")
+        if len(no_data) > 10:
+            console.print(f"  ... and {len(no_data) - 10} more[/dim]")
+
+
+@earnings_app.command("upcoming")
+def earnings_upcoming(
+    days: Annotated[
+        int,
+        typer.Option("--days", "-d", help="Show earnings within N days"),
+    ] = 7,
+) -> None:
+    """Show upcoming earnings from your watchlist."""
+    # This is an alias for earnings check with default watchlist
+    earnings_check(symbols=None, days=days)
+
+
+# =============================================================================
+# Scan Command
+# =============================================================================
+@app.command("scan")
+def scan(
+    strategy: Annotated[
+        str,
+        typer.Option("--strategy", "-s", help="Strategy name to use for scanning"),
+    ] = "example_rsi_flow",
+    tickers: Annotated[
+        str | None,
+        typer.Option("--tickers", "-t", help="Comma-separated list of tickers (uses watchlist if not provided)"),
+    ] = None,
+    sector: Annotated[
+        str | None,
+        typer.Option("--sector", help="Scan all stocks in this sector"),
+    ] = None,
+    skip_earnings_within: Annotated[
+        int,
+        typer.Option("--skip-earnings-within", help="Skip stocks with earnings within N days"),
+    ] = 0,
+    output: Annotated[
+        str,
+        typer.Option("--output", "-o", help="Output format: table, json, or log"),
+    ] = "table",
+) -> None:
+    """Scan stocks for trading opportunities using a strategy.
+
+    This command analyzes stocks and outputs any signals found. It's designed
+    to be run on a schedule (e.g., via cron) for automated scanning.
+
+    Examples:
+        ib-picker scan --strategy momentum
+        ib-picker scan --tickers AAPL,MSFT,GOOGL
+        ib-picker scan --sector Technology --skip-earnings-within 7
+        ib-picker scan --output json >> ~/scan-results.jsonl
+    """
+    import json
+    from datetime import datetime
+
+    from ib_daily_picker.analysis.evaluator import StrategyEvaluator
+    from ib_daily_picker.analysis.strategy_loader import get_strategy_loader
+    from ib_daily_picker.store.database import get_db_manager
+    from ib_daily_picker.store.repositories import StockRepository
+
+    # Determine ticker list
+    ticker_list = []
+    source = ""
+
+    if tickers:
+        ticker_list = [t.strip().upper() for t in tickers.split(",")]
+        source = "argument"
+    elif sector:
+        ticker_list = _get_sector_tickers(sector)
+        source = f"sector:{sector}"
+    else:
+        # Use watchlist
+        db = get_db_manager()
+        entries = db.watchlist_list()
+        if entries:
+            ticker_list = [e["symbol"] for e in entries]
+            source = "watchlist"
+        else:
+            # Fall back to config
+            settings = get_settings()
+            ticker_list = list(settings.basket.default_tickers)
+            source = "config"
+
+    if not ticker_list:
+        err_console.print("[red]No tickers to scan. Add to watchlist or specify --tickers[/red]")
+        raise typer.Exit(1)
+
+    # Filter out stocks with upcoming earnings if requested
+    excluded_earnings = []
+    if skip_earnings_within > 0:
+        from datetime import timedelta
+        today = datetime.now().date()
+        cutoff = today + timedelta(days=skip_earnings_within)
+
+        filtered = []
+        for symbol in ticker_list:
+            earnings_date, _ = _get_earnings_date(symbol)
+            if earnings_date:
+                try:
+                    ed = datetime.strptime(earnings_date, "%Y-%m-%d").date()
+                    if ed <= cutoff:
+                        excluded_earnings.append((symbol, earnings_date))
+                        continue
+                except ValueError:
+                    pass
+            filtered.append(symbol)
+
+        ticker_list = filtered
+
+    if output == "table":
+        console.print(f"[cyan]Scanning {len(ticker_list)} stocks with strategy: {strategy}[/cyan]")
+        console.print(f"[dim]Source: {source}[/dim]")
+        if excluded_earnings:
+            console.print(f"[yellow]Skipping {len(excluded_earnings)} stocks with earnings within {skip_earnings_within} days[/yellow]")
+
+    # Load strategy
+    try:
+        loader = get_strategy_loader()
+        strat = loader.load(strategy)
+    except FileNotFoundError:
+        err_console.print(f"[red]Strategy not found: {strategy}[/red]")
+        raise typer.Exit(1)
+
+    # Run evaluation
+    db = get_db_manager()
+    repo = StockRepository(db)
+    evaluator = StrategyEvaluator(strat)
+
+    signals = []
+    scan_time = datetime.utcnow().isoformat()
+
+    with console.status("[bold cyan]Scanning...") if output == "table" else nullcontext():
+        for symbol in ticker_list:
+            try:
+                ohlcv = repo.get_ohlcv(symbol, limit=200)  # Need enough for indicators
+                if not ohlcv:
+                    continue
+
+                result = evaluator.evaluate(symbol, ohlcv, flow_alerts=[])
+                if result and result.entry_signal:
+                    # Determine signal type from entry/exit signals
+                    signal_type = "buy" if result.entry_signal else "sell" if result.exit_signal else "none"
+                    signals.append({
+                        "symbol": symbol,
+                        "signal": signal_type,
+                        "confidence": float(result.confidence),
+                        "entry": float(result.current_price) if result.current_price else None,
+                        "stop": float(result.suggested_stop_loss) if result.suggested_stop_loss else None,
+                        "target": float(result.suggested_take_profit) if result.suggested_take_profit else None,
+                        "reasoning": result.reasoning,
+                    })
+            except Exception as e:
+                if output == "table":
+                    err_console.print(f"[dim]Error evaluating {symbol}: {e}[/dim]")
+
+    # Output results
+    if output == "json":
+        # JSONL format for easy appending
+        for sig in signals:
+            sig["scan_time"] = scan_time
+            sig["strategy"] = strategy
+            print(json.dumps(sig))
+    elif output == "log":
+        # Simple log format
+        if signals:
+            for sig in signals:
+                print(f"[{scan_time}] {sig['signal'].upper()} {sig['symbol']} "
+                      f"confidence={sig['confidence']:.0%} "
+                      f"entry={sig['entry']} stop={sig['stop']} target={sig['target']}")
+        else:
+            print(f"[{scan_time}] No signals found")
+    else:
+        # Table format
+        if signals:
+            from rich.table import Table
+            table = Table(title=f"Scan Results - {strategy}")
+            table.add_column("Symbol", style="cyan")
+            table.add_column("Signal")
+            table.add_column("Confidence", justify="right")
+            table.add_column("Entry", justify="right")
+            table.add_column("Stop", justify="right")
+            table.add_column("Target", justify="right")
+
+            for sig in sorted(signals, key=lambda x: -x["confidence"]):
+                signal_style = "green" if sig["signal"] == "buy" else "red"
+                conf_str = f"{sig['confidence']:.0%}"
+                entry_str = f"${sig['entry']:.2f}" if sig["entry"] else "-"
+                stop_str = f"${sig['stop']:.2f}" if sig["stop"] else "-"
+                target_str = f"${sig['target']:.2f}" if sig["target"] else "-"
+
+                table.add_row(
+                    sig["symbol"],
+                    f"[{signal_style}]{sig['signal'].upper()}[/{signal_style}]",
+                    conf_str,
+                    entry_str,
+                    stop_str,
+                    target_str,
+                )
+
+            console.print(table)
+            console.print(f"\n[dim]Found {len(signals)} signals from {len(ticker_list)} stocks[/dim]")
+        else:
+            console.print("[dim]No signals found.[/dim]")
+
+        if excluded_earnings:
+            console.print(f"\n[dim]Excluded (earnings soon): {', '.join([e[0] for e in excluded_earnings])}[/dim]")
 
 
 if __name__ == "__main__":

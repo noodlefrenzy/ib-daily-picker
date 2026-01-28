@@ -167,6 +167,14 @@ class StockRepository:
                 return None
             columns = [desc[0] for desc in conn.description]
             row = dict(zip(columns, result))
+            # Handle updated_at which may be datetime or string
+            updated_at = row["updated_at"]
+            if updated_at is None:
+                updated_at = datetime.utcnow()
+            elif isinstance(updated_at, str):
+                updated_at = datetime.fromisoformat(updated_at)
+            # else it's already a datetime
+
             return StockMetadata(
                 symbol=row["symbol"],
                 name=row["name"],
@@ -175,9 +183,7 @@ class StockRepository:
                 market_cap=row["market_cap"],
                 currency=row["currency"],
                 exchange=row["exchange"],
-                updated_at=datetime.fromisoformat(row["updated_at"])
-                if row["updated_at"]
-                else datetime.utcnow(),
+                updated_at=updated_at,
             )
 
     def _row_to_ohlcv(self, row: dict) -> OHLCV:

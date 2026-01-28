@@ -23,6 +23,7 @@
                list="available-symbols">
         <button class="btn btn-primary" onclick="addSymbol()">Add</button>
         <button class="btn btn-secondary" onclick="addBenchmark()">Add {{ benchmark }}</button>
+        <span id="dynamic-etf-buttons"></span>
     </div>
 
     <datalist id="available-symbols">
@@ -81,6 +82,10 @@
     let symbolColorMap = {};
     let symbolsWithData = new Set();
 
+    // Sector ETF mapping and symbol sectors
+    const sectorETFs = {{ sector_etfs | tojson }};
+    let symbolSectors = {};  // symbol -> sector
+
     // Chart colors
     const colors = [
         '#4f9cf9', '#00c853', '#ff5252', '#ffaa00',
@@ -88,7 +93,13 @@
     ];
 
     // Initialize
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
+        // Fetch sectors for initial symbols
+        for (const symbol of selectedSymbols) {
+            await fetchSymbolSector(symbol);
+        }
+        renderDynamicETFButtons();
+
         if (selectedSymbols.length > 0) {
             updateChart();
         } else {
@@ -104,16 +115,66 @@
         }
     });
 
-    function addSymbol() {
+    async function addSymbol() {
         const input = document.getElementById('symbol-input');
         const symbol = input.value.trim().toUpperCase();
 
         if (symbol && !selectedSymbols.includes(symbol)) {
             selectedSymbols.push(symbol);
+            // Fetch sector info for the symbol
+            await fetchSymbolSector(symbol);
             updateChart();
+            renderDynamicETFButtons();
         }
 
         input.value = '';
+    }
+
+    async function fetchSymbolSector(symbol) {
+        try {
+            const response = await fetch(`/api/stocks/${symbol}`);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.sector) {
+                    symbolSectors[symbol] = data.sector;
+                }
+            }
+        } catch (error) {
+            console.log(`Could not fetch sector for ${symbol}`);
+        }
+    }
+
+    function addSectorETF(etf) {
+        if (!selectedSymbols.includes(etf)) {
+            selectedSymbols.push(etf);
+            updateChart();
+            renderDynamicETFButtons();
+        }
+    }
+
+    function renderDynamicETFButtons() {
+        const container = document.getElementById('dynamic-etf-buttons');
+
+        // Find unique sectors from selected symbols and their ETFs
+        const relevantETFs = new Set();
+        for (const symbol of selectedSymbols) {
+            const sector = symbolSectors[symbol];
+            if (sector && sectorETFs[sector]) {
+                const etf = sectorETFs[sector];
+                // Only show button if ETF not already selected
+                if (!selectedSymbols.includes(etf)) {
+                    relevantETFs.add(JSON.stringify({ sector, etf }));
+                }
+            }
+        }
+
+        // Render buttons
+        const buttons = Array.from(relevantETFs).map(json => {
+            const { sector, etf } = JSON.parse(json);
+            return `<button class="btn btn-secondary btn-sm" onclick="addSectorETF('${etf}')" title="${sector} sector ETF">Add ${etf}</button>`;
+        });
+
+        container.innerHTML = buttons.join('');
     }
 
     function addBenchmark() {
@@ -125,9 +186,12 @@
 
     function removeSymbol(symbol) {
         selectedSymbols = selectedSymbols.filter(s => s !== symbol);
-        // Remove from color map
+        // Remove from color map and sectors
         delete symbolColorMap[symbol];
+        delete symbolSectors[symbol];
         symbolsWithData.delete(symbol);
+
+        renderDynamicETFButtons();
 
         if (selectedSymbols.length > 0) {
             updateChart();
@@ -451,6 +515,17 @@
 
     .empty-state.error {
         color: var(--color-negative);
+    }
+
+    #dynamic-etf-buttons {
+        display: inline-flex;
+        gap: var(--spacing-xs);
+        margin-left: var(--spacing-sm);
+    }
+
+    .btn-sm {
+        padding: var(--spacing-xs) var(--spacing-sm);
+        font-size: 0.85rem;
     }
 </style>
 {% endblock %}

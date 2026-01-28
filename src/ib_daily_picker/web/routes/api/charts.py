@@ -171,10 +171,11 @@ async def compare_symbols(
     if not symbol_list:
         raise HTTPException(status_code=400, detail="At least one symbol required")
 
-    # Add benchmark if specified
-    benchmark_symbol = benchmark.upper() if benchmark else MARKET_BENCHMARK
-    if benchmark_symbol not in symbol_list:
-        symbol_list.append(benchmark_symbol)
+    # Add benchmark only if explicitly requested
+    if benchmark:
+        benchmark_symbol = benchmark.upper()
+        if benchmark_symbol not in symbol_list:
+            symbol_list.append(benchmark_symbol)
 
     # Determine date range
     if start_date and end_date:

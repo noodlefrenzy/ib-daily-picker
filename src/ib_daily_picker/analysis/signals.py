@@ -152,8 +152,12 @@ class SignalGenerator:
         risk_config = RISK_PROFILES.get(profile_name, RISK_PROFILES["moderate"])
 
         # Apply strategy overrides
-        risk_per_trade = Decimal(str(self._strategy.risk.risk_per_trade or risk_config["risk_per_trade"]))
-        min_risk_reward = Decimal(str(self._strategy.risk.min_risk_reward or risk_config["min_risk_reward"]))
+        risk_per_trade = Decimal(
+            str(self._strategy.risk.risk_per_trade or risk_config["risk_per_trade"])
+        )
+        min_risk_reward = Decimal(
+            str(self._strategy.risk.min_risk_reward or risk_config["min_risk_reward"])
+        )
 
         # Calculate position size based on risk
         position_size = None
@@ -164,15 +168,17 @@ class SignalGenerator:
                 position_size = risk_amount / risk_per_share
 
         # Check risk/reward ratio
-        if evaluation.suggested_stop_loss and evaluation.suggested_take_profit and evaluation.current_price:
+        if (
+            evaluation.suggested_stop_loss
+            and evaluation.suggested_take_profit
+            and evaluation.current_price
+        ):
             risk = abs(evaluation.current_price - evaluation.suggested_stop_loss)
             reward = abs(evaluation.suggested_take_profit - evaluation.current_price)
             if risk > 0:
                 risk_reward = reward / risk
                 if risk_reward < float(min_risk_reward):
-                    logger.info(
-                        f"R:R ratio {risk_reward:.2f} below minimum {min_risk_reward}"
-                    )
+                    logger.info(f"R:R ratio {risk_reward:.2f} below minimum {min_risk_reward}")
 
         # Set expiration (default 24 hours)
         expires_at = evaluation.timestamp + timedelta(hours=24)
@@ -207,9 +213,7 @@ class MultiStrategySignalGenerator:
             strategies: List of strategies to evaluate
             account_size: Account size for position sizing
         """
-        self._generators = [
-            SignalGenerator(s, account_size) for s in strategies
-        ]
+        self._generators = [SignalGenerator(s, account_size) for s in strategies]
 
     def generate(
         self,

@@ -260,6 +260,5 @@ def get_llm_client() -> LLMClient:
         return OllamaClient()
     else:
         raise ValueError(
-            f"Unknown LLM provider: {provider}. "
-            "Supported providers: anthropic, ollama"
+            f"Unknown LLM provider: {provider}. Supported providers: anthropic, ollama"
         )

@@ -53,7 +53,9 @@ class LLMIndicatorCondition(BaseModel):
     """Indicator-based entry condition from LLM."""
 
     indicator: str = Field(..., description="Indicator name to check")
-    operator: str = Field(..., description="One of: lt, le, gt, ge, eq, ne, cross_above, cross_below")
+    operator: str = Field(
+        ..., description="One of: lt, le, gt, ge, eq, ne, cross_above, cross_below"
+    )
     value: float | str = Field(..., description="Threshold value or another indicator name")
 
 
@@ -97,9 +99,7 @@ class LLMStrategySpec(BaseModel):
     stop_loss: LLMExitRule | None = Field(None, description="Stop loss rule")
     trailing_stop: LLMExitRule | None = Field(None, description="Trailing stop rule")
 
-    risk_profile: str = Field(
-        "moderate", description="One of: conservative, moderate, aggressive"
-    )
+    risk_profile: str = Field("moderate", description="One of: conservative, moderate, aggressive")
     min_risk_reward: float = Field(2.0, description="Minimum risk/reward ratio")
 
 
@@ -234,19 +234,23 @@ Include all indicators needed for the conditions. If the description is vague, m
         # Entry conditions
         for cond in strategy.entry.conditions:
             if hasattr(cond, "indicator"):
-                data["entry"]["conditions"].append({
-                    "type": "indicator_threshold",
-                    "indicator": cond.indicator,
-                    "operator": cond.operator.value,
-                    "value": cond.value,
-                })
+                data["entry"]["conditions"].append(
+                    {
+                        "type": "indicator_threshold",
+                        "indicator": cond.indicator,
+                        "operator": cond.operator.value,
+                        "value": cond.value,
+                    }
+                )
             elif hasattr(cond, "direction"):
-                data["entry"]["conditions"].append({
-                    "type": "flow_signal",
-                    "direction": cond.direction,
-                    "min_premium": cond.min_premium,
-                    "recency_minutes": cond.recency_minutes,
-                })
+                data["entry"]["conditions"].append(
+                    {
+                        "type": "flow_signal",
+                        "direction": cond.direction,
+                        "min_premium": cond.min_premium,
+                        "recency_minutes": cond.recency_minutes,
+                    }
+                )
 
         # Exit rules
         if strategy.exit.take_profit:
@@ -286,11 +290,13 @@ Include all indicators needed for the conditions. If the description is vague, m
             if ind.source and ind.source != "close":
                 params["source"] = ind.source
 
-            indicators.append(IndicatorConfig(
-                name=ind.name,
-                type=ind_type,
-                params=params,
-            ))
+            indicators.append(
+                IndicatorConfig(
+                    name=ind.name,
+                    type=ind_type,
+                    params=params,
+                )
+            )
 
         # Build entry conditions
         conditions: list[IndicatorCondition | FlowCondition] = []
@@ -301,20 +307,24 @@ Include all indicators needed for the conditions. If the description is vague, m
             except ValueError:
                 op = ConditionOperator.GT
 
-            conditions.append(IndicatorCondition(
-                type="indicator_threshold",
-                indicator=ic.indicator,
-                operator=op,
-                value=ic.value,
-            ))
+            conditions.append(
+                IndicatorCondition(
+                    type="indicator_threshold",
+                    indicator=ic.indicator,
+                    operator=op,
+                    value=ic.value,
+                )
+            )
 
         for fc in spec.flow_conditions:
-            conditions.append(FlowCondition(
-                type="flow_signal",
-                direction=fc.direction.lower(),
-                min_premium=fc.min_premium,
-                recency_minutes=fc.recency_minutes,
-            ))
+            conditions.append(
+                FlowCondition(
+                    type="flow_signal",
+                    direction=fc.direction.lower(),
+                    min_premium=fc.min_premium,
+                    recency_minutes=fc.recency_minutes,
+                )
+            )
 
         # Entry logic
         try:

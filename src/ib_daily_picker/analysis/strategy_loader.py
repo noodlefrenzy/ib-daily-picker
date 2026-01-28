@@ -83,8 +83,7 @@ class StrategyLoader:
                 # Check if it's a relative path
                 if not path.exists():
                     raise FileNotFoundError(
-                        f"Strategy not found: {name_or_path}. "
-                        f"Looked in: {self.strategies_dir}"
+                        f"Strategy not found: {name_or_path}. Looked in: {self.strategies_dir}"
                     )
 
         if not path.exists():
@@ -169,25 +168,27 @@ class StrategyLoader:
         if not strategy_dir.exists():
             return strategies
 
-        for path in sorted(strategy_dir.glob("*.yaml")) + sorted(
-            strategy_dir.glob("*.yml")
-        ):
+        for path in sorted(strategy_dir.glob("*.yaml")) + sorted(strategy_dir.glob("*.yml")):
             try:
                 strategy = self.load(str(path))
-                strategies.append({
-                    "name": strategy.name,
-                    "file": path.name,
-                    "version": strategy.version,
-                    "description": strategy.strategy.description or "",
-                })
+                strategies.append(
+                    {
+                        "name": strategy.name,
+                        "file": path.name,
+                        "version": strategy.version,
+                        "description": strategy.strategy.description or "",
+                    }
+                )
             except Exception as e:
                 logger.warning(f"Failed to load {path.name}: {e}")
-                strategies.append({
-                    "name": path.stem,
-                    "file": path.name,
-                    "version": "error",
-                    "description": f"Error: {e}",
-                })
+                strategies.append(
+                    {
+                        "name": path.stem,
+                        "file": path.name,
+                        "version": "error",
+                        "description": f"Error: {e}",
+                    }
+                )
 
         return strategies
 

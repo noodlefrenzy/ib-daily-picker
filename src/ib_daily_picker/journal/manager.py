@@ -229,8 +229,7 @@ class JournalManager:
 
         self.trade_repo.save(closed_trade)
         logger.info(
-            f"Closed trade {trade_id} for {trade.symbol} @ ${exit_price} "
-            f"(PnL: ${closed_trade.pnl})"
+            f"Closed trade {trade_id} for {trade.symbol} @ ${exit_price} (PnL: ${closed_trade.pnl})"
         )
 
         return closed_trade
@@ -258,7 +257,9 @@ class JournalManager:
         trade.status = TradeStatus.CANCELLED
         trade.updated_at = datetime.utcnow()
         if reason:
-            trade.notes = f"{trade.notes}\n\nCancelled: {reason}" if trade.notes else f"Cancelled: {reason}"
+            trade.notes = (
+                f"{trade.notes}\n\nCancelled: {reason}" if trade.notes else f"Cancelled: {reason}"
+            )
 
         self.trade_repo.save(trade)
         logger.info(f"Cancelled trade {trade_id}")
@@ -481,49 +482,53 @@ class JournalManager:
         writer = csv.writer(output)
 
         # Header
-        writer.writerow([
-            "id",
-            "symbol",
-            "direction",
-            "entry_time",
-            "entry_price",
-            "exit_time",
-            "exit_price",
-            "position_size",
-            "pnl",
-            "pnl_percent",
-            "r_multiple",
-            "stop_loss",
-            "take_profit",
-            "mfe",
-            "mae",
-            "duration_minutes",
-            "tags",
-            "notes",
-        ])
+        writer.writerow(
+            [
+                "id",
+                "symbol",
+                "direction",
+                "entry_time",
+                "entry_price",
+                "exit_time",
+                "exit_price",
+                "position_size",
+                "pnl",
+                "pnl_percent",
+                "r_multiple",
+                "stop_loss",
+                "take_profit",
+                "mfe",
+                "mae",
+                "duration_minutes",
+                "tags",
+                "notes",
+            ]
+        )
 
         # Data
         for trade in trades:
-            writer.writerow([
-                trade.id,
-                trade.symbol,
-                trade.direction.value,
-                trade.entry_time.isoformat(),
-                str(trade.entry_price),
-                trade.exit_time.isoformat() if trade.exit_time else "",
-                str(trade.exit_price) if trade.exit_price else "",
-                str(trade.position_size),
-                str(trade.pnl) if trade.pnl else "",
-                str(trade.pnl_percent) if trade.pnl_percent else "",
-                str(trade.r_multiple) if trade.r_multiple else "",
-                str(trade.stop_loss) if trade.stop_loss else "",
-                str(trade.take_profit) if trade.take_profit else "",
-                str(trade.mfe) if trade.mfe else "",
-                str(trade.mae) if trade.mae else "",
-                str(trade.duration_minutes) if trade.duration_minutes else "",
-                ",".join(trade.tags),
-                trade.notes or "",
-            ])
+            writer.writerow(
+                [
+                    trade.id,
+                    trade.symbol,
+                    trade.direction.value,
+                    trade.entry_time.isoformat(),
+                    str(trade.entry_price),
+                    trade.exit_time.isoformat() if trade.exit_time else "",
+                    str(trade.exit_price) if trade.exit_price else "",
+                    str(trade.position_size),
+                    str(trade.pnl) if trade.pnl else "",
+                    str(trade.pnl_percent) if trade.pnl_percent else "",
+                    str(trade.r_multiple) if trade.r_multiple else "",
+                    str(trade.stop_loss) if trade.stop_loss else "",
+                    str(trade.take_profit) if trade.take_profit else "",
+                    str(trade.mfe) if trade.mfe else "",
+                    str(trade.mae) if trade.mae else "",
+                    str(trade.duration_minutes) if trade.duration_minutes else "",
+                    ",".join(trade.tags),
+                    trade.notes or "",
+                ]
+            )
 
         return output.getvalue()
 

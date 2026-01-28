@@ -150,7 +150,9 @@ class UnusualWhalesFetcher:
             )
 
         except httpx.HTTPStatusError as e:
-            status = FetchStatus.RATE_LIMITED if e.response.status_code == 429 else FetchStatus.ERROR
+            status = (
+                FetchStatus.RATE_LIMITED if e.response.status_code == 429 else FetchStatus.ERROR
+            )
             logger.error(f"UW API HTTP error: {e.response.status_code}")
             return FetchResult(
                 data=None,
@@ -254,7 +256,13 @@ class UnusualWhalesFetcher:
 
         # Parse option type
         opt_type_str = (item.get("option_type") or item.get("put_call") or "").lower()
-        option_type = OptionType.CALL if "call" in opt_type_str else OptionType.PUT if "put" in opt_type_str else None
+        option_type = (
+            OptionType.CALL
+            if "call" in opt_type_str
+            else OptionType.PUT
+            if "put" in opt_type_str
+            else None
+        )
 
         # Parse alert type
         alert_type_str = (item.get("alert_type") or item.get("type") or "unusual_volume").lower()

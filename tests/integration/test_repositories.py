@@ -175,9 +175,7 @@ class TestStockRepository:
         result = repo.get_ohlcv("AAPL", start_date=date(2024, 1, 2))
         assert len(result) == 2
 
-        result = repo.get_ohlcv(
-            "AAPL", start_date=date(2024, 1, 2), end_date=date(2024, 1, 2)
-        )
+        result = repo.get_ohlcv("AAPL", start_date=date(2024, 1, 2), end_date=date(2024, 1, 2))
         assert len(result) == 1
 
     def test_get_latest_date(self, test_db: DatabaseManager) -> None:

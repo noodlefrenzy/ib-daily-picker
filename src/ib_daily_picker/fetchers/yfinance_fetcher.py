@@ -168,9 +168,7 @@ class YFinanceFetcher(BaseFetcher):
                 errors=[str(e)],
             )
 
-    def _fetch_history(
-        self, symbol: str, start_date: date, end_date: date
-    ) -> Any:
+    def _fetch_history(self, symbol: str, start_date: date, end_date: date) -> Any:
         """Sync method to fetch history from yfinance."""
         ticker = yf.Ticker(symbol)
         # yfinance end date is exclusive, so add 1 day

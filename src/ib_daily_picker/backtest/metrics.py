@@ -191,9 +191,7 @@ def calculate_backtest_metrics(
 
     # Expectancy
     loss_rate = Decimal("1") - metrics.win_rate
-    metrics.expectancy = (
-        metrics.win_rate * metrics.avg_winner - loss_rate * metrics.avg_loser
-    )
+    metrics.expectancy = metrics.win_rate * metrics.avg_winner - loss_rate * metrics.avg_loser
 
     # R-multiple
     r_multiples = [t.r_multiple for t in closed if t.r_multiple is not None]
@@ -246,11 +244,11 @@ def calculate_backtest_metrics(
         if daily_returns and len(daily_returns) >= 10:
             avg_return = sum(daily_returns) / len(daily_returns)
             variance = sum((r - avg_return) ** 2 for r in daily_returns) / len(daily_returns)
-            std_dev = variance ** 0.5
+            std_dev = variance**0.5
 
             if std_dev > 0:
                 annualized_return = avg_return * 252
-                annualized_std = std_dev * (252 ** 0.5)
+                annualized_std = std_dev * (252**0.5)
                 metrics.annual_volatility = Decimal(str(annualized_std))
 
                 # Sharpe = (Return - RiskFree) / StdDev
@@ -325,12 +323,14 @@ def _build_equity_curve(
         drawdown = peak_equity - current_equity
         drawdown_pct = (drawdown / peak_equity * 100) if peak_equity > 0 else Decimal("0")
 
-        curve.append(EquityCurvePoint(
-            date=d,
-            equity=current_equity,
-            drawdown=drawdown,
-            drawdown_pct=drawdown_pct,
-        ))
+        curve.append(
+            EquityCurvePoint(
+                date=d,
+                equity=current_equity,
+                drawdown=drawdown,
+                drawdown_pct=drawdown_pct,
+            )
+        )
 
     return curve
 
@@ -372,15 +372,17 @@ def compare_strategies(
 
     # Collect comparable values
     for m in metrics_list:
-        comparison["strategies"].append({
-            "name": m.strategy_name,
-            "total_return_pct": float(m.total_return_pct),
-            "win_rate": float(m.win_rate),
-            "profit_factor": float(m.profit_factor) if m.profit_factor else 0,
-            "max_drawdown_pct": float(m.max_drawdown_pct),
-            "sharpe_ratio": float(m.sharpe_ratio) if m.sharpe_ratio else 0,
-            "total_trades": m.total_trades,
-        })
+        comparison["strategies"].append(
+            {
+                "name": m.strategy_name,
+                "total_return_pct": float(m.total_return_pct),
+                "win_rate": float(m.win_rate),
+                "profit_factor": float(m.profit_factor) if m.profit_factor else 0,
+                "max_drawdown_pct": float(m.max_drawdown_pct),
+                "sharpe_ratio": float(m.sharpe_ratio) if m.sharpe_ratio else 0,
+                "total_trades": m.total_trades,
+            }
+        )
 
     # Calculate rankings for each metric
     for key in ["total_return_pct", "win_rate", "profit_factor", "sharpe_ratio"]:

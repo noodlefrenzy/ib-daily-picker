@@ -143,9 +143,7 @@ def calculate_extended_metrics(trades: list["Trade"]) -> ExtendedMetrics:
 
     # Win rate
     metrics.win_rate = (
-        Decimal(str(len(winners))) / Decimal(str(len(closed)))
-        if closed
-        else Decimal("0")
+        Decimal(str(len(winners))) / Decimal(str(len(closed))) if closed else Decimal("0")
     )
 
     # Averages
@@ -164,9 +162,7 @@ def calculate_extended_metrics(trades: list["Trade"]) -> ExtendedMetrics:
 
     # Expectancy = (Win% * AvgWin) - (Loss% * AvgLoss)
     loss_rate = Decimal("1") - metrics.win_rate
-    metrics.expectancy = (
-        metrics.win_rate * metrics.avg_winner - loss_rate * metrics.avg_loser
-    )
+    metrics.expectancy = metrics.win_rate * metrics.avg_winner - loss_rate * metrics.avg_loser
 
     # Largest winner/loser
     pnls = [t.pnl for t in closed if t.pnl is not None]
@@ -240,7 +236,8 @@ def _calculate_drawdown(trades: list["Trade"]) -> DrawdownInfo:
 
     # Sort by exit time for equity curve
     sorted_trades = sorted(
-        [t for t in trades if t.exit_time], key=lambda t: t.exit_time  # type: ignore
+        [t for t in trades if t.exit_time],
+        key=lambda t: t.exit_time,  # type: ignore
     )
 
     if not sorted_trades:
@@ -319,25 +316,19 @@ def _calculate_by_strategy(trades: list["Trade"]) -> list[StrategyAnalysis]:
     for strategy_name, strat_trades in strategy_trades.items():
         analysis = StrategyAnalysis(strategy_name=strategy_name)
 
-        closed = [
-            t for t in strat_trades if t.status == TradeStatus.CLOSED and t.pnl is not None
-        ]
+        closed = [t for t in strat_trades if t.status == TradeStatus.CLOSED and t.pnl is not None]
         winners = [t for t in closed if t.pnl and t.pnl > 0]
         losers = [t for t in closed if t.pnl and t.pnl < 0]
 
         analysis.total_trades = len(closed)
         analysis.win_rate = (
-            Decimal(str(len(winners))) / Decimal(str(len(closed)))
-            if closed
-            else Decimal("0")
+            Decimal(str(len(winners))) / Decimal(str(len(closed))) if closed else Decimal("0")
         )
         analysis.total_pnl = sum((t.pnl for t in closed if t.pnl), start=Decimal("0"))
 
         r_multiples = [t.r_multiple for t in closed if t.r_multiple is not None]
         if r_multiples:
-            analysis.avg_r_multiple = sum(r_multiples, start=Decimal("0")) / len(
-                r_multiples
-            )
+            analysis.avg_r_multiple = sum(r_multiples, start=Decimal("0")) / len(r_multiples)
 
         gross_profit = sum((t.pnl for t in winners if t.pnl), start=Decimal("0"))
         gross_loss = abs(sum((t.pnl for t in losers if t.pnl), start=Decimal("0")))

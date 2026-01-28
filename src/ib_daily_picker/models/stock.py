@@ -63,8 +63,7 @@ class OHLCV(BaseModel):
         return v.upper().strip()
 
     @field_validator(
-        "open_price", "high_price", "low_price", "close_price", "adjusted_close",
-        mode="before"
+        "open_price", "high_price", "low_price", "close_price", "adjusted_close", mode="before"
     )
     @classmethod
     def to_decimal(cls, v: float | str | Decimal | None) -> Decimal | None:
@@ -92,13 +91,9 @@ class OHLCV(BaseModel):
                 f"Low ({self.low_price}) cannot be greater than high ({self.high_price})"
             )
         if self.open_price < self.low_price or self.open_price > self.high_price:
-            raise ValueError(
-                f"Open ({self.open_price}) must be between low and high"
-            )
+            raise ValueError(f"Open ({self.open_price}) must be between low and high")
         if self.close_price < self.low_price or self.close_price > self.high_price:
-            raise ValueError(
-                f"Close ({self.close_price}) must be between low and high"
-            )
+            raise ValueError(f"Close ({self.close_price}) must be between low and high")
 
     @property
     def change(self) -> Decimal:

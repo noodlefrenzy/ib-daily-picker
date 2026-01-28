@@ -198,9 +198,7 @@ class BacktestRunner:
                     shares = position_value / evaluation.current_price
 
                     # Apply slippage
-                    entry_price = evaluation.current_price * (
-                        Decimal("1") + config.slippage_pct
-                    )
+                    entry_price = evaluation.current_price * (Decimal("1") + config.slippage_pct)
 
                     # Create position
                     position = BacktestPosition(
@@ -211,7 +209,9 @@ class BacktestRunner:
                         entry_date=current_date,
                         position_size=shares,
                         stop_loss=evaluation.suggested_stop_loss if config.use_stop_loss else None,
-                        take_profit=evaluation.suggested_take_profit if config.use_take_profit else None,
+                        take_profit=evaluation.suggested_take_profit
+                        if config.use_take_profit
+                        else None,
                         mfe=entry_price,
                         mae=entry_price,
                     )
@@ -423,8 +423,7 @@ class BacktestRunner:
         )
 
         logger.debug(
-            f"{exit_date}: Exited {position.symbol} @ ${actual_exit:.2f} "
-            f"(PnL: ${pnl:.2f}, {notes})"
+            f"{exit_date}: Exited {position.symbol} @ ${actual_exit:.2f} (PnL: ${pnl:.2f}, {notes})"
         )
 
         return trade
@@ -474,10 +473,7 @@ def run_walk_forward(
         out_sample_start = in_sample_end + timedelta(days=1)
         out_sample_end = out_sample_start + timedelta(days=out_sample_days)
 
-        logger.info(
-            f"Walk-forward window {window}: "
-            f"OOS {out_sample_start} to {out_sample_end}"
-        )
+        logger.info(f"Walk-forward window {window}: OOS {out_sample_start} to {out_sample_end}")
 
         config = BacktestConfig(
             start_date=out_sample_start,

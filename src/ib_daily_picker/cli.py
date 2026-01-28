@@ -114,9 +114,7 @@ def config_show(
     )
     table.add_row(
         "UW API Key",
-        "***configured***"
-        if settings.api.unusual_whales_api_key
-        else "[red]not set[/red]",
+        "***configured***" if settings.api.unusual_whales_api_key else "[red]not set[/red]",
     )
     table.add_row("LLM Provider", settings.api.llm_provider)
     table.add_row("LLM Model", settings.api.llm_model)
@@ -153,6 +151,7 @@ def config_set(
     config: dict[str, Any] = {}
     if config_path.exists():
         import tomli
+
         with open(config_path, "rb") as f:
             config = tomli.load(f)
 
@@ -242,54 +241,250 @@ def _get_sector_tickers(sector: str, limit: int = 20) -> list[str]:
     # and filter by sector
     sector_seeds: dict[str, list[str]] = {
         "Technology": [
-            "AAPL", "MSFT", "GOOGL", "NVDA", "META", "AVGO", "ORCL", "CRM",
-            "ADBE", "AMD", "INTC", "QCOM", "TXN", "IBM", "NOW", "INTU",
-            "AMAT", "MU", "LRCX", "ADI", "SNPS", "CDNS", "KLAC", "MCHP",
+            "AAPL",
+            "MSFT",
+            "GOOGL",
+            "NVDA",
+            "META",
+            "AVGO",
+            "ORCL",
+            "CRM",
+            "ADBE",
+            "AMD",
+            "INTC",
+            "QCOM",
+            "TXN",
+            "IBM",
+            "NOW",
+            "INTU",
+            "AMAT",
+            "MU",
+            "LRCX",
+            "ADI",
+            "SNPS",
+            "CDNS",
+            "KLAC",
+            "MCHP",
         ],
         "Consumer Cyclical": [
-            "AMZN", "TSLA", "HD", "MCD", "NKE", "SBUX", "LOW", "TJX",
-            "BKNG", "CMG", "ORLY", "AZO", "ROST", "DHI", "LEN", "GM",
-            "F", "MAR", "HLT", "YUM", "DPZ", "DECK", "ULTA", "LULU",
+            "AMZN",
+            "TSLA",
+            "HD",
+            "MCD",
+            "NKE",
+            "SBUX",
+            "LOW",
+            "TJX",
+            "BKNG",
+            "CMG",
+            "ORLY",
+            "AZO",
+            "ROST",
+            "DHI",
+            "LEN",
+            "GM",
+            "F",
+            "MAR",
+            "HLT",
+            "YUM",
+            "DPZ",
+            "DECK",
+            "ULTA",
+            "LULU",
         ],
         "Healthcare": [
-            "UNH", "JNJ", "LLY", "PFE", "ABBV", "MRK", "TMO", "ABT",
-            "DHR", "BMY", "AMGN", "MDT", "ISRG", "SYK", "GILD", "VRTX",
-            "REGN", "ZTS", "BDX", "CVS", "CI", "HUM", "ELV", "MCK",
+            "UNH",
+            "JNJ",
+            "LLY",
+            "PFE",
+            "ABBV",
+            "MRK",
+            "TMO",
+            "ABT",
+            "DHR",
+            "BMY",
+            "AMGN",
+            "MDT",
+            "ISRG",
+            "SYK",
+            "GILD",
+            "VRTX",
+            "REGN",
+            "ZTS",
+            "BDX",
+            "CVS",
+            "CI",
+            "HUM",
+            "ELV",
+            "MCK",
         ],
         "Financial": [
-            "BRK-B", "JPM", "V", "MA", "BAC", "WFC", "GS", "MS",
-            "SPGI", "BLK", "C", "AXP", "SCHW", "CB", "MMC", "PGR",
-            "ICE", "CME", "AON", "MET", "AIG", "TRV", "ALL", "AFL",
+            "BRK-B",
+            "JPM",
+            "V",
+            "MA",
+            "BAC",
+            "WFC",
+            "GS",
+            "MS",
+            "SPGI",
+            "BLK",
+            "C",
+            "AXP",
+            "SCHW",
+            "CB",
+            "MMC",
+            "PGR",
+            "ICE",
+            "CME",
+            "AON",
+            "MET",
+            "AIG",
+            "TRV",
+            "ALL",
+            "AFL",
         ],
         "Communication Services": [
-            "GOOG", "META", "NFLX", "DIS", "CMCSA", "VZ", "T", "TMUS",
-            "CHTR", "EA", "TTWO", "WBD", "PARA", "OMC", "IPG", "LYV",
+            "GOOG",
+            "META",
+            "NFLX",
+            "DIS",
+            "CMCSA",
+            "VZ",
+            "T",
+            "TMUS",
+            "CHTR",
+            "EA",
+            "TTWO",
+            "WBD",
+            "PARA",
+            "OMC",
+            "IPG",
+            "LYV",
         ],
         "Consumer Defensive": [
-            "WMT", "PG", "COST", "KO", "PEP", "PM", "MO", "MDLZ",
-            "CL", "GIS", "K", "KMB", "SYY", "HSY", "KR", "TGT",
-            "DG", "DLTR", "EL", "STZ", "KDP", "MKC", "CHD", "CLX",
+            "WMT",
+            "PG",
+            "COST",
+            "KO",
+            "PEP",
+            "PM",
+            "MO",
+            "MDLZ",
+            "CL",
+            "GIS",
+            "K",
+            "KMB",
+            "SYY",
+            "HSY",
+            "KR",
+            "TGT",
+            "DG",
+            "DLTR",
+            "EL",
+            "STZ",
+            "KDP",
+            "MKC",
+            "CHD",
+            "CLX",
         ],
         "Energy": [
-            "XOM", "CVX", "COP", "SLB", "EOG", "MPC", "PXD", "PSX",
-            "VLO", "OXY", "WMB", "KMI", "HAL", "DVN", "HES", "BKR",
+            "XOM",
+            "CVX",
+            "COP",
+            "SLB",
+            "EOG",
+            "MPC",
+            "PXD",
+            "PSX",
+            "VLO",
+            "OXY",
+            "WMB",
+            "KMI",
+            "HAL",
+            "DVN",
+            "HES",
+            "BKR",
         ],
         "Industrials": [
-            "CAT", "UNP", "RTX", "HON", "UPS", "BA", "DE", "LMT",
-            "GE", "MMM", "ADP", "CSX", "NSC", "FDX", "EMR", "ITW",
-            "ETN", "PH", "PCAR", "WM", "RSG", "JCI", "CARR", "GD",
+            "CAT",
+            "UNP",
+            "RTX",
+            "HON",
+            "UPS",
+            "BA",
+            "DE",
+            "LMT",
+            "GE",
+            "MMM",
+            "ADP",
+            "CSX",
+            "NSC",
+            "FDX",
+            "EMR",
+            "ITW",
+            "ETN",
+            "PH",
+            "PCAR",
+            "WM",
+            "RSG",
+            "JCI",
+            "CARR",
+            "GD",
         ],
         "Basic Materials": [
-            "LIN", "APD", "SHW", "ECL", "NEM", "FCX", "NUE", "DD",
-            "DOW", "PPG", "VMC", "MLM", "ALB", "CTVA", "CF", "MOS",
+            "LIN",
+            "APD",
+            "SHW",
+            "ECL",
+            "NEM",
+            "FCX",
+            "NUE",
+            "DD",
+            "DOW",
+            "PPG",
+            "VMC",
+            "MLM",
+            "ALB",
+            "CTVA",
+            "CF",
+            "MOS",
         ],
         "Real Estate": [
-            "PLD", "AMT", "EQIX", "CCI", "PSA", "SPG", "O", "WELL",
-            "DLR", "AVB", "EQR", "VTR", "ARE", "MAA", "UDR", "ESS",
+            "PLD",
+            "AMT",
+            "EQIX",
+            "CCI",
+            "PSA",
+            "SPG",
+            "O",
+            "WELL",
+            "DLR",
+            "AVB",
+            "EQR",
+            "VTR",
+            "ARE",
+            "MAA",
+            "UDR",
+            "ESS",
         ],
         "Utilities": [
-            "NEE", "DUK", "SO", "D", "AEP", "SRE", "EXC", "XEL",
-            "PCG", "WEC", "ED", "ES", "AWK", "DTE", "FE", "PPL",
+            "NEE",
+            "DUK",
+            "SO",
+            "D",
+            "AEP",
+            "SRE",
+            "EXC",
+            "XEL",
+            "PCG",
+            "WEC",
+            "ED",
+            "ES",
+            "AWK",
+            "DTE",
+            "FE",
+            "PPL",
         ],
     }
 
@@ -423,15 +618,21 @@ def fetch_stocks(
         if not ticker_list:
             err_console.print(f"[red]No tickers found for sector: {discovered_sector}[/red]")
             raise typer.Exit(1)
-        console.print(f"[green]Found {len(ticker_list)} tickers: {', '.join(ticker_list[:10])}{'...' if len(ticker_list) > 10 else ''}[/green]")
+        console.print(
+            f"[green]Found {len(ticker_list)} tickers: {', '.join(ticker_list[:10])}{'...' if len(ticker_list) > 10 else ''}[/green]"
+        )
     elif sector:
         console.print(f"[cyan]Looking up tickers in sector: {sector}[/cyan]")
         ticker_list = _get_sector_tickers(sector, limit=limit)
         if not ticker_list:
             err_console.print(f"[red]No tickers found for sector: {sector}[/red]")
-            err_console.print("[dim]Available sectors: Technology, Consumer Cyclical, Healthcare, Financial, Communication Services, Consumer Defensive, Energy, Industrials, Basic Materials, Real Estate, Utilities[/dim]")
+            err_console.print(
+                "[dim]Available sectors: Technology, Consumer Cyclical, Healthcare, Financial, Communication Services, Consumer Defensive, Energy, Industrials, Basic Materials, Real Estate, Utilities[/dim]"
+            )
             raise typer.Exit(1)
-        console.print(f"[green]Found {len(ticker_list)} tickers: {', '.join(ticker_list[:10])}{'...' if len(ticker_list) > 10 else ''}[/green]")
+        console.print(
+            f"[green]Found {len(ticker_list)} tickers: {', '.join(ticker_list[:10])}{'...' if len(ticker_list) > 10 else ''}[/green]"
+        )
     elif tickers:
         ticker_list = [t.strip().upper() for t in tickers.split(",")]
     else:
@@ -456,9 +657,7 @@ def fetch_stocks(
 
             for symbol in ticker_list:
                 progress.update(task, description=f"Fetching {symbol}...")
-                result = await fetcher.fetch_and_store(
-                    symbol, start, end, incremental=not full
-                )
+                result = await fetcher.fetch_and_store(symbol, start, end, incremental=not full)
                 results[symbol] = result
                 progress.advance(task)
 
@@ -549,9 +748,7 @@ def fetch_flows(
     settings = get_settings()
 
     if not settings.api.unusual_whales_api_key:
-        err_console.print(
-            "[red]Error: Unusual Whales API key not configured.[/red]"
-        )
+        err_console.print("[red]Error: Unusual Whales API key not configured.[/red]")
         err_console.print("Set IB_PICKER_UNUSUAL_WHALES_API_KEY environment variable.")
         raise typer.Exit(1)
 
@@ -709,7 +906,9 @@ def fetch_status(
                 # Calculate trading day gaps (approximate - actual trading days ~252/year)
                 # If we have significantly fewer rows than expected trading days, flag it
                 expected_trading_days = int(calendar_days * 252 / 365) if calendar_days else 0
-                gap_count = max(0, expected_trading_days - count) if expected_trading_days > 0 else 0
+                gap_count = (
+                    max(0, expected_trading_days - count) if expected_trading_days > 0 else 0
+                )
                 gap_str = str(gap_count) if gap_count > 5 else "-"
 
                 ticker_table.add_row(
@@ -757,7 +956,14 @@ def strategy_list() -> None:
     table.add_column("Description")
 
     for s in strategies:
-        table.add_row(s["name"], s["version"], s["file"], s["description"][:50] + "..." if len(s.get("description", "")) > 50 else s.get("description", ""))
+        table.add_row(
+            s["name"],
+            s["version"],
+            s["file"],
+            s["description"][:50] + "..."
+            if len(s.get("description", "")) > 50
+            else s.get("description", ""),
+        )
 
     console.print(table)
 
@@ -794,12 +1000,18 @@ def strategy_validate(
             if hasattr(cond, "indicator"):
                 console.print(f"  - {cond.indicator} {cond.operator.value} {cond.value}")
             elif hasattr(cond, "direction"):
-                console.print(f"  - flow: {cond.direction} (min premium: ${cond.min_premium or 0:,.0f})")
+                console.print(
+                    f"  - flow: {cond.direction} (min premium: ${cond.min_premium or 0:,.0f})"
+                )
 
         if strategy.exit.take_profit:
-            console.print(f"\n[bold]Take Profit:[/bold] {strategy.exit.take_profit.type.value} @ {strategy.exit.take_profit.value}")
+            console.print(
+                f"\n[bold]Take Profit:[/bold] {strategy.exit.take_profit.type.value} @ {strategy.exit.take_profit.value}"
+            )
         if strategy.exit.stop_loss:
-            console.print(f"[bold]Stop Loss:[/bold] {strategy.exit.stop_loss.type.value} @ {strategy.exit.stop_loss.value}")
+            console.print(
+                f"[bold]Stop Loss:[/bold] {strategy.exit.stop_loss.type.value} @ {strategy.exit.stop_loss.value}"
+            )
 
         console.print(f"\n[bold]Risk Profile:[/bold] {strategy.risk.profile.value}")
 
@@ -847,11 +1059,17 @@ def strategy_show(
         # Exit rules
         console.print("\n[bold]Exit Rules:[/bold]")
         if strategy.exit.take_profit:
-            console.print(f"  Take Profit: {strategy.exit.take_profit.type.value} @ {strategy.exit.take_profit.value}")
+            console.print(
+                f"  Take Profit: {strategy.exit.take_profit.type.value} @ {strategy.exit.take_profit.value}"
+            )
         if strategy.exit.stop_loss:
-            console.print(f"  Stop Loss: {strategy.exit.stop_loss.type.value} @ {strategy.exit.stop_loss.value}")
+            console.print(
+                f"  Stop Loss: {strategy.exit.stop_loss.type.value} @ {strategy.exit.stop_loss.value}"
+            )
         if strategy.exit.trailing_stop:
-            console.print(f"  Trailing Stop: {strategy.exit.trailing_stop.type.value} @ {strategy.exit.trailing_stop.value}")
+            console.print(
+                f"  Trailing Stop: {strategy.exit.trailing_stop.type.value} @ {strategy.exit.trailing_stop.value}"
+            )
 
         # Risk profile
         console.print(f"\n[bold]Risk Profile:[/bold] {strategy.risk.profile.value}")
@@ -913,7 +1131,7 @@ def strategy_create(
             raise typer.Exit(1)
     else:
         # Create a template strategy
-        template = '''# Strategy: {name}
+        template = """# Strategy: {name}
 # Created with ib-picker strategy create
 
 strategy:
@@ -951,7 +1169,7 @@ exit:
 risk:
   profile: "moderate"
   min_risk_reward: 2.0
-'''
+"""
         yaml_content = template.format(name=name)
 
         output_path = output or (settings.strategies_dir / f"{name}.yaml")
@@ -1474,7 +1692,10 @@ def journal_metrics(
         table.add_row("Largest Loser", f"${metrics.largest_loser:,.2f}")
 
         # Streak info
-        table.add_row("Current Streak", f"{metrics.streak.current_streak} ({metrics.streak.current_streak_type})")
+        table.add_row(
+            "Current Streak",
+            f"{metrics.streak.current_streak} ({metrics.streak.current_streak_type})",
+        )
         table.add_row("Max Win Streak", str(metrics.streak.max_win_streak))
         table.add_row("Max Loss Streak", str(metrics.streak.max_loss_streak))
 
@@ -1766,7 +1987,9 @@ def db_export(
     ] = Path("export.csv"),
     table: Annotated[
         str,
-        typer.Option("--table", "-t", help="Table to export (ohlcv, flow_alerts, recommendations, trades)"),
+        typer.Option(
+            "--table", "-t", help="Table to export (ohlcv, flow_alerts, recommendations, trades)"
+        ),
     ] = "ohlcv",
 ) -> None:
     """Export data to CSV."""
@@ -1793,6 +2016,7 @@ def db_export(
 
         # Write CSV
         import csv
+
         output.parent.mkdir(parents=True, exist_ok=True)
         with open(output, "w", newline="") as f:
             writer = csv.writer(f)
@@ -1886,7 +2110,9 @@ def watchlist_list() -> None:
     entries = db.watchlist_list()
 
     if not entries:
-        console.print("[dim]Watchlist is empty. Add symbols with: ib-picker watchlist add AAPL,MSFT[/dim]")
+        console.print(
+            "[dim]Watchlist is empty. Add symbols with: ib-picker watchlist add AAPL,MSFT[/dim]"
+        )
         return
 
     table = Table(title="Watchlist")
@@ -1986,7 +2212,9 @@ def _get_earnings_date(symbol: str) -> tuple[str | None, str | None]:
 def earnings_check(
     symbols: Annotated[
         str | None,
-        typer.Argument(help="Comma-separated list of ticker symbols (uses watchlist if not provided)"),
+        typer.Argument(
+            help="Comma-separated list of ticker symbols (uses watchlist if not provided)"
+        ),
     ] = None,
     days: Annotated[
         int,
@@ -2008,7 +2236,9 @@ def earnings_check(
         if not entries:
             console.print("[yellow]No symbols provided and watchlist is empty.[/yellow]")
             console.print("[dim]Usage: ib-picker earnings check AAPL,MSFT[/dim]")
-            console.print("[dim]   or: ib-picker watchlist add AAPL,MSFT && ib-picker earnings check[/dim]")
+            console.print(
+                "[dim]   or: ib-picker watchlist add AAPL,MSFT && ib-picker earnings check[/dim]"
+            )
             return
         ticker_list = [e["symbol"] for e in entries]
         console.print(f"[dim]Checking watchlist ({len(ticker_list)} symbols)...[/dim]")
@@ -2025,13 +2255,15 @@ def earnings_check(
                     ed = datetime.strptime(earnings_date, "%Y-%m-%d").date()
                     days_until = (ed - today).days
                     if days_until >= 0:  # Include today and future
-                        results.append({
-                            "symbol": symbol,
-                            "date": earnings_date,
-                            "time": earnings_time or "Unknown",
-                            "days_until": days_until,
-                            "within_window": days_until <= days,
-                        })
+                        results.append(
+                            {
+                                "symbol": symbol,
+                                "date": earnings_date,
+                                "time": earnings_time or "Unknown",
+                                "days_until": days_until,
+                                "within_window": days_until <= days,
+                            }
+                        )
                 except ValueError:
                     pass
 
@@ -2095,7 +2327,11 @@ def scan(
     ] = "example_rsi_flow",
     tickers: Annotated[
         str | None,
-        typer.Option("--tickers", "-t", help="Comma-separated list of tickers (uses watchlist if not provided)"),
+        typer.Option(
+            "--tickers",
+            "-t",
+            help="Comma-separated list of tickers (uses watchlist if not provided)",
+        ),
     ] = None,
     sector: Annotated[
         str | None,
@@ -2160,6 +2396,7 @@ def scan(
     excluded_earnings = []
     if skip_earnings_within > 0:
         from datetime import timedelta
+
         today = datetime.now().date()
         cutoff = today + timedelta(days=skip_earnings_within)
 
@@ -2182,7 +2419,9 @@ def scan(
         console.print(f"[cyan]Scanning {len(ticker_list)} stocks with strategy: {strategy}[/cyan]")
         console.print(f"[dim]Source: {source}[/dim]")
         if excluded_earnings:
-            console.print(f"[yellow]Skipping {len(excluded_earnings)} stocks with earnings within {skip_earnings_within} days[/yellow]")
+            console.print(
+                f"[yellow]Skipping {len(excluded_earnings)} stocks with earnings within {skip_earnings_within} days[/yellow]"
+            )
 
     # Load strategy
     try:
@@ -2210,16 +2449,24 @@ def scan(
                 result = evaluator.evaluate(symbol, ohlcv, flow_alerts=[])
                 if result and result.entry_signal:
                     # Determine signal type from entry/exit signals
-                    signal_type = "buy" if result.entry_signal else "sell" if result.exit_signal else "none"
-                    signals.append({
-                        "symbol": symbol,
-                        "signal": signal_type,
-                        "confidence": float(result.confidence),
-                        "entry": float(result.current_price) if result.current_price else None,
-                        "stop": float(result.suggested_stop_loss) if result.suggested_stop_loss else None,
-                        "target": float(result.suggested_take_profit) if result.suggested_take_profit else None,
-                        "reasoning": result.reasoning,
-                    })
+                    signal_type = (
+                        "buy" if result.entry_signal else "sell" if result.exit_signal else "none"
+                    )
+                    signals.append(
+                        {
+                            "symbol": symbol,
+                            "signal": signal_type,
+                            "confidence": float(result.confidence),
+                            "entry": float(result.current_price) if result.current_price else None,
+                            "stop": float(result.suggested_stop_loss)
+                            if result.suggested_stop_loss
+                            else None,
+                            "target": float(result.suggested_take_profit)
+                            if result.suggested_take_profit
+                            else None,
+                            "reasoning": result.reasoning,
+                        }
+                    )
             except Exception as e:
                 if output == "table":
                     err_console.print(f"[dim]Error evaluating {symbol}: {e}[/dim]")
@@ -2235,15 +2482,18 @@ def scan(
         # Simple log format
         if signals:
             for sig in signals:
-                print(f"[{scan_time}] {sig['signal'].upper()} {sig['symbol']} "
-                      f"confidence={sig['confidence']:.0%} "
-                      f"entry={sig['entry']} stop={sig['stop']} target={sig['target']}")
+                print(
+                    f"[{scan_time}] {sig['signal'].upper()} {sig['symbol']} "
+                    f"confidence={sig['confidence']:.0%} "
+                    f"entry={sig['entry']} stop={sig['stop']} target={sig['target']}"
+                )
         else:
             print(f"[{scan_time}] No signals found")
     else:
         # Table format
         if signals:
             from rich.table import Table
+
             table = Table(title=f"Scan Results - {strategy}")
             table.add_column("Symbol", style="cyan")
             table.add_column("Signal")
@@ -2269,12 +2519,16 @@ def scan(
                 )
 
             console.print(table)
-            console.print(f"\n[dim]Found {len(signals)} signals from {len(ticker_list)} stocks[/dim]")
+            console.print(
+                f"\n[dim]Found {len(signals)} signals from {len(ticker_list)} stocks[/dim]"
+            )
         else:
             console.print("[dim]No signals found.[/dim]")
 
         if excluded_earnings:
-            console.print(f"\n[dim]Excluded (earnings soon): {', '.join([e[0] for e in excluded_earnings])}[/dim]")
+            console.print(
+                f"\n[dim]Excluded (earnings soon): {', '.join([e[0] for e in excluded_earnings])}[/dim]"
+            )
 
 
 # =============================================================================
@@ -2317,6 +2571,7 @@ def serve(
 
     # Ensure database is initialized
     from ib_daily_picker.store.database import get_db_manager
+
     get_db_manager()
 
     app_instance = create_app()

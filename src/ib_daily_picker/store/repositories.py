@@ -133,9 +133,7 @@ class StockRepository:
     def get_symbols(self) -> list[str]:
         """Get all symbols with data."""
         with self._db.duckdb() as conn:
-            result = conn.execute(
-                "SELECT DISTINCT symbol FROM ohlcv ORDER BY symbol"
-            ).fetchall()
+            result = conn.execute("SELECT DISTINCT symbol FROM ohlcv ORDER BY symbol").fetchall()
         return [row[0] for row in result]
 
     def save_metadata(self, metadata: StockMetadata) -> None:
@@ -192,13 +190,9 @@ class StockRepository:
             low_price=Decimal(str(row["low"])),
             close_price=Decimal(str(row["close"])),
             volume=row["volume"],
-            adjusted_close=Decimal(str(row["adjusted_close"]))
-            if row["adjusted_close"]
-            else None,
+            adjusted_close=Decimal(str(row["adjusted_close"])) if row["adjusted_close"] else None,
             dividend=Decimal(str(row["dividend"])) if row["dividend"] else Decimal("0"),
-            stock_split=Decimal(str(row["stock_split"]))
-            if row["stock_split"]
-            else Decimal("1"),
+            stock_split=Decimal(str(row["stock_split"])) if row["stock_split"] else Decimal("1"),
         )
 
 
@@ -278,9 +272,7 @@ class FlowRepository:
 
         return [self._row_to_alert(dict(zip(columns, row))) for row in result]
 
-    def get_recent(
-        self, limit: int = 100, min_premium: Decimal | None = None
-    ) -> list[FlowAlert]:
+    def get_recent(self, limit: int = 100, min_premium: Decimal | None = None) -> list[FlowAlert]:
         """Get most recent flow alerts."""
         query = "SELECT * FROM flow_alerts"
         params: list = []
@@ -373,9 +365,7 @@ class RecommendationRepository:
     def get_by_id(self, rec_id: str) -> Recommendation | None:
         """Get recommendation by ID."""
         with self._db.duckdb() as conn:
-            result = conn.execute(
-                "SELECT * FROM recommendations WHERE id = ?", [rec_id]
-            ).fetchone()
+            result = conn.execute("SELECT * FROM recommendations WHERE id = ?", [rec_id]).fetchone()
             if not result:
                 return None
             columns = [desc[0] for desc in conn.description]
@@ -425,9 +415,7 @@ class RecommendationRepository:
             entry_price=Decimal(str(row["entry_price"])) if row["entry_price"] else None,
             stop_loss=Decimal(str(row["stop_loss"])) if row["stop_loss"] else None,
             take_profit=Decimal(str(row["take_profit"])) if row["take_profit"] else None,
-            position_size=Decimal(str(row["position_size"]))
-            if row["position_size"]
-            else None,
+            position_size=Decimal(str(row["position_size"])) if row["position_size"] else None,
             confidence=Decimal(str(row["confidence"])),
             reasoning=row["reasoning"],
             generated_at=generated_at,
@@ -484,9 +472,7 @@ class TradeRepository:
     def get_by_id(self, trade_id: str) -> Trade | None:
         """Get trade by ID."""
         with self._db.duckdb() as conn:
-            result = conn.execute(
-                "SELECT * FROM trades WHERE id = ?", [trade_id]
-            ).fetchone()
+            result = conn.execute("SELECT * FROM trades WHERE id = ?", [trade_id]).fetchone()
             if not result:
                 return None
             columns = [desc[0] for desc in conn.description]

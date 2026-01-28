@@ -18,7 +18,12 @@ from datetime import date, datetime, timedelta
 from typing import TYPE_CHECKING, Callable
 
 from ib_daily_picker.config import get_settings
-from ib_daily_picker.fetchers.base import FetchProgress, FetchResult, FetchStatus, FetcherWithFallback
+from ib_daily_picker.fetchers.base import (
+    FetchProgress,
+    FetchResult,
+    FetchStatus,
+    FetcherWithFallback,
+)
 from ib_daily_picker.fetchers.finnhub_fetcher import get_finnhub_fetcher
 from ib_daily_picker.fetchers.yfinance_fetcher import get_yfinance_fetcher
 from ib_daily_picker.models import OHLCV, OHLCVBatch, StockMetadata
@@ -133,7 +138,7 @@ class StockDataFetcher:
             days_since_latest = (end_date - latest).days
             if days_since_latest <= 5:  # Within a reasonable gap (weekend + buffer)
                 logger.info(f"{symbol}: No new data available (latest: {latest})")
-                existing = repo.get_ohlcv(symbol, start_date - timedelta(days=5*365), latest)
+                existing = repo.get_ohlcv(symbol, start_date - timedelta(days=5 * 365), latest)
                 return FetchResult(
                     data=existing,
                     status=FetchStatus.UP_TO_DATE,
@@ -171,9 +176,7 @@ class StockDataFetcher:
             if progress_callback:
                 progress_callback(progress)
 
-            results[symbol] = await self.fetch_and_store(
-                symbol, start_date, end_date, incremental
-            )
+            results[symbol] = await self.fetch_and_store(symbol, start_date, end_date, incremental)
 
             if results[symbol].is_success:
                 progress.completed += 1

@@ -56,9 +56,7 @@ class Recommendation(BaseModel):
         le=Decimal("1"),
     )
     reasoning: Optional[str] = Field(None, description="Why this signal was generated")
-    generated_at: datetime = Field(
-        default_factory=datetime.utcnow, description="When generated"
-    )
+    generated_at: datetime = Field(default_factory=datetime.utcnow, description="When generated")
     expires_at: Optional[datetime] = Field(None, description="When signal expires")
     status: RecommendationStatus = Field(
         default=RecommendationStatus.PENDING, description="Current status"
@@ -70,9 +68,7 @@ class Recommendation(BaseModel):
         """Ensure symbol is uppercase."""
         return v.upper().strip()
 
-    @field_validator(
-        "entry_price", "stop_loss", "take_profit", "position_size", mode="before"
-    )
+    @field_validator("entry_price", "stop_loss", "take_profit", "position_size", mode="before")
     @classmethod
     def to_decimal(cls, v: float | str | Decimal | None) -> Decimal | None:
         """Convert to Decimal."""
@@ -150,9 +146,7 @@ class RecommendationBatch(BaseModel):
     def filter_by_signal(self, signal_type: SignalType) -> "RecommendationBatch":
         """Filter by signal type."""
         return RecommendationBatch(
-            recommendations=[
-                r for r in self.recommendations if r.signal_type == signal_type
-            ],
+            recommendations=[r for r in self.recommendations if r.signal_type == signal_type],
             generated_at=self.generated_at,
             strategy_name=self.strategy_name,
         )
@@ -167,9 +161,7 @@ class RecommendationBatch(BaseModel):
 
     def sort_by_confidence(self, descending: bool = True) -> "RecommendationBatch":
         """Sort by confidence score."""
-        sorted_recs = sorted(
-            self.recommendations, key=lambda r: r.confidence, reverse=descending
-        )
+        sorted_recs = sorted(self.recommendations, key=lambda r: r.confidence, reverse=descending)
         return RecommendationBatch(
             recommendations=sorted_recs,
             generated_at=self.generated_at,

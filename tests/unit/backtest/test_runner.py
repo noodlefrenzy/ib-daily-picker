@@ -158,11 +158,31 @@ class TestCalculateBacktestMetrics:
         """Max consecutive wins/losses tracked."""
         today = date.today()
         trades = [
-            create_trade(entry_price=Decimal("100"), exit_price=Decimal("110"), entry_date=today - timedelta(days=5)),
-            create_trade(entry_price=Decimal("100"), exit_price=Decimal("115"), entry_date=today - timedelta(days=4)),
-            create_trade(entry_price=Decimal("100"), exit_price=Decimal("120"), entry_date=today - timedelta(days=3)),
-            create_trade(entry_price=Decimal("100"), exit_price=Decimal("90"), entry_date=today - timedelta(days=2)),
-            create_trade(entry_price=Decimal("100"), exit_price=Decimal("85"), entry_date=today - timedelta(days=1)),
+            create_trade(
+                entry_price=Decimal("100"),
+                exit_price=Decimal("110"),
+                entry_date=today - timedelta(days=5),
+            ),
+            create_trade(
+                entry_price=Decimal("100"),
+                exit_price=Decimal("115"),
+                entry_date=today - timedelta(days=4),
+            ),
+            create_trade(
+                entry_price=Decimal("100"),
+                exit_price=Decimal("120"),
+                entry_date=today - timedelta(days=3),
+            ),
+            create_trade(
+                entry_price=Decimal("100"),
+                exit_price=Decimal("90"),
+                entry_date=today - timedelta(days=2),
+            ),
+            create_trade(
+                entry_price=Decimal("100"),
+                exit_price=Decimal("85"),
+                entry_date=today - timedelta(days=1),
+            ),
         ]
         metrics = calculate_backtest_metrics(trades)
 

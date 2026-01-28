@@ -72,12 +72,8 @@ class FlowAlert(BaseModel):
     strike: Optional[Decimal] = Field(None, description="Strike price")
     expiration: Optional[date] = Field(None, description="Option expiration date")
     option_type: Optional[OptionType] = Field(None, description="Call or put")
-    sentiment: Sentiment = Field(
-        default=Sentiment.NEUTRAL, description="Overall sentiment"
-    )
-    raw_data: Optional[dict[str, Any]] = Field(
-        None, description="Original API response"
-    )
+    sentiment: Sentiment = Field(default=Sentiment.NEUTRAL, description="Overall sentiment")
+    raw_data: Optional[dict[str, Any]] = Field(None, description="Original API response")
     created_at: datetime = Field(
         default_factory=datetime.utcnow, description="Record creation time"
     )
@@ -173,9 +169,7 @@ class FlowAlertBatch(BaseModel):
     @property
     def total_premium(self) -> Decimal:
         """Total premium across all alerts."""
-        return sum(
-            (a.premium or Decimal("0") for a in self.alerts), start=Decimal("0")
-        )
+        return sum((a.premium or Decimal("0") for a in self.alerts), start=Decimal("0"))
 
     def filter_by_symbol(self, symbol: str) -> "FlowAlertBatch":
         """Filter alerts by symbol."""
@@ -195,8 +189,6 @@ class FlowAlertBatch(BaseModel):
     def filter_by_min_premium(self, min_premium: Decimal) -> "FlowAlertBatch":
         """Filter alerts by minimum premium."""
         return FlowAlertBatch(
-            alerts=[
-                a for a in self.alerts if a.premium and a.premium >= min_premium
-            ],
+            alerts=[a for a in self.alerts if a.premium and a.premium >= min_premium],
             fetched_at=self.fetched_at,
         )

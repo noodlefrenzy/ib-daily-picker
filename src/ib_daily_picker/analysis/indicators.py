@@ -54,14 +54,16 @@ def ohlcv_to_dataframe(ohlcv_list: Sequence[OHLCV]) -> pd.DataFrame:
     """
     data = []
     for o in ohlcv_list:
-        data.append({
-            "date": o.trade_date,
-            "open": float(o.open_price),
-            "high": float(o.high_price),
-            "low": float(o.low_price),
-            "close": float(o.close_price),
-            "volume": o.volume,
-        })
+        data.append(
+            {
+                "date": o.trade_date,
+                "open": float(o.open_price),
+                "high": float(o.high_price),
+                "low": float(o.low_price),
+                "close": float(o.close_price),
+                "volume": o.volume,
+            }
+        )
 
     df = pd.DataFrame(data)
     if not df.empty:

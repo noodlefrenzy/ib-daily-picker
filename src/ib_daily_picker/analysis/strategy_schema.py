@@ -83,9 +83,7 @@ class IndicatorConfig(BaseModel):
 
     name: str = Field(..., description="Unique name for this indicator")
     type: IndicatorType = Field(..., description="Type of indicator")
-    params: dict[str, Any] = Field(
-        default_factory=dict, description="Indicator parameters"
-    )
+    params: dict[str, Any] = Field(default_factory=dict, description="Indicator parameters")
 
     @field_validator("params", mode="before")
     @classmethod
@@ -142,9 +140,7 @@ class FlowCondition(BaseModel):
     direction: str = Field(..., description="bullish, bearish, or any")
     min_premium: float | None = Field(None, description="Minimum premium in dollars")
     min_volume: int | None = Field(None, description="Minimum volume")
-    recency_minutes: int = Field(
-        default=60, description="Look back this many minutes for flow"
-    )
+    recency_minutes: int = Field(default=60, description="Look back this many minutes for flow")
 
 
 class PriceCondition(BaseModel):
@@ -162,9 +158,7 @@ Condition = IndicatorCondition | FlowCondition | PriceCondition
 class EntryConfig(BaseModel):
     """Entry signal configuration."""
 
-    conditions: list[Condition] = Field(
-        ..., description="List of conditions for entry"
-    )
+    conditions: list[Condition] = Field(..., description="List of conditions for entry")
     logic: ConditionLogic = Field(
         default=ConditionLogic.ALL, description="How to combine conditions"
     )
@@ -184,9 +178,7 @@ class ExitConfig(BaseModel):
     take_profit: ExitTarget | None = Field(None, description="Take profit target")
     stop_loss: ExitTarget | None = Field(None, description="Stop loss target")
     trailing_stop: ExitTarget | None = Field(None, description="Trailing stop")
-    time_exit_bars: int | None = Field(
-        None, description="Exit after N bars regardless of price"
-    )
+    time_exit_bars: int | None = Field(None, description="Exit after N bars regardless of price")
 
 
 class RiskConfig(BaseModel):
@@ -195,13 +187,9 @@ class RiskConfig(BaseModel):
     profile: RiskProfileName = Field(
         default=RiskProfileName.MODERATE, description="Risk profile name"
     )
-    risk_per_trade: Decimal | None = Field(
-        None, description="Override risk per trade (0-1)"
-    )
+    risk_per_trade: Decimal | None = Field(None, description="Override risk per trade (0-1)")
     max_positions: int | None = Field(None, description="Override max positions")
-    min_risk_reward: Decimal | None = Field(
-        None, description="Override minimum risk/reward ratio"
-    )
+    min_risk_reward: Decimal | None = Field(None, description="Override minimum risk/reward ratio")
 
     @field_validator("risk_per_trade", mode="before")
     @classmethod
@@ -240,9 +228,7 @@ class Strategy(BaseModel):
     entry: EntryConfig = Field(..., description="Entry signal configuration")
     exit: ExitConfig = Field(default_factory=ExitConfig, description="Exit configuration")
     risk: RiskConfig = Field(default_factory=RiskConfig, description="Risk configuration")
-    filters: dict[str, Any] = Field(
-        default_factory=dict, description="Additional filters"
-    )
+    filters: dict[str, Any] = Field(default_factory=dict, description="Additional filters")
 
     @property
     def name(self) -> str:

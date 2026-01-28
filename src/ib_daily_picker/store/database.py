@@ -162,21 +162,13 @@ class DatabaseManager:
             """)
 
             # Create indexes for common queries
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_ohlcv_symbol ON ohlcv(symbol)"
-            )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_ohlcv_date ON ohlcv(date)"
-            )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_flow_alerts_symbol ON flow_alerts(symbol)"
-            )
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_ohlcv_symbol ON ohlcv(symbol)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_ohlcv_date ON ohlcv(date)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_flow_alerts_symbol ON flow_alerts(symbol)")
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_flow_alerts_time ON flow_alerts(alert_time)"
             )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_trades_symbol ON trades(symbol)"
-            )
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_trades_symbol ON trades(symbol)")
 
     def _init_sqlite_schema(self) -> None:
         """Initialize SQLite schema for application state."""
@@ -243,9 +235,7 @@ class DatabaseManager:
         finally:
             conn.close()
 
-    def get_sync_state(
-        self, entity_type: str, entity_id: str
-    ) -> dict[str, str] | None:
+    def get_sync_state(self, entity_type: str, entity_id: str) -> dict[str, str] | None:
         """Get sync state for an entity.
 
         Args:
@@ -305,7 +295,9 @@ class DatabaseManager:
 
     # --- Watchlist Management ---
 
-    def watchlist_add(self, symbol: str, notes: str | None = None, tags: list[str] | None = None) -> bool:
+    def watchlist_add(
+        self, symbol: str, notes: str | None = None, tags: list[str] | None = None
+    ) -> bool:
         """Add a symbol to the watchlist.
 
         Args:

@@ -185,14 +185,10 @@ class StrategyEvaluator:
         for condition in entry_config.conditions:
             if hasattr(condition, "indicator"):
                 # Indicator condition
-                result = self._evaluate_indicator_condition(
-                    condition, indicator_values
-                )
+                result = self._evaluate_indicator_condition(condition, indicator_values)
             elif hasattr(condition, "direction"):
                 # Flow condition
-                result = self._evaluate_flow_condition(
-                    condition, flow_alerts, evaluation_time
-                )
+                result = self._evaluate_flow_condition(condition, flow_alerts, evaluation_time)
             else:
                 # Price action or other condition
                 result = ConditionResult(
@@ -259,9 +255,7 @@ class StrategyEvaluator:
         """Evaluate a flow-based condition."""
         # Filter by recency
         cutoff_time = evaluation_time - timedelta(minutes=condition.recency_minutes)
-        recent_alerts = [
-            a for a in flow_alerts if a.alert_time >= cutoff_time
-        ]
+        recent_alerts = [a for a in flow_alerts if a.alert_time >= cutoff_time]
 
         if not recent_alerts:
             return ConditionResult(
@@ -289,7 +283,8 @@ class StrategyEvaluator:
         # Check premium threshold
         if condition.min_premium:
             matching = [
-                a for a in matching
+                a
+                for a in matching
                 if a.premium and a.premium >= Decimal(str(condition.min_premium))
             ]
 
@@ -302,10 +297,7 @@ class StrategyEvaluator:
 
         # Check volume threshold
         if condition.min_volume:
-            matching = [
-                a for a in matching
-                if a.volume and a.volume >= condition.min_volume
-            ]
+            matching = [a for a in matching if a.volume and a.volume >= condition.min_volume]
 
         if not matching:
             return ConditionResult(
@@ -314,9 +306,7 @@ class StrategyEvaluator:
                 reason=f"No flow alerts with volume >= {condition.min_volume}",
             )
 
-        total_premium = sum(
-            (a.premium for a in matching if a.premium), start=Decimal("0")
-        )
+        total_premium = sum((a.premium for a in matching if a.premium), start=Decimal("0"))
 
         return ConditionResult(
             condition_type="flow",
@@ -407,7 +397,9 @@ class StrategyEvaluator:
         else:
             lines.append(f"No entry signal for {result.symbol}")
 
-        lines.append(f"Conditions: {len(result.conditions_passed)}/{result.total_conditions} passed")
+        lines.append(
+            f"Conditions: {len(result.conditions_passed)}/{result.total_conditions} passed"
+        )
 
         if result.conditions_failed:
             lines.append("Failed conditions:")

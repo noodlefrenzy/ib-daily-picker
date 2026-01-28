@@ -39,9 +39,7 @@ class Trade(BaseModel):
     """Executed trade for journaling."""
 
     id: str = Field(..., description="Unique trade identifier")
-    recommendation_id: Optional[str] = Field(
-        None, description="Source recommendation ID"
-    )
+    recommendation_id: Optional[str] = Field(None, description="Source recommendation ID")
     symbol: str = Field(..., description="Stock ticker symbol")
     direction: TradeDirection = Field(..., description="Long or short")
     entry_price: Decimal = Field(..., description="Entry price")
@@ -210,7 +208,9 @@ class TradeMetrics(BaseModel):
         gross_profit = sum((t.pnl for t in winners if t.pnl), start=Decimal("0"))
         gross_loss = abs(sum((t.pnl for t in losers if t.pnl), start=Decimal("0")))
 
-        win_rate = Decimal(str(len(winners))) / Decimal(str(len(closed))) if closed else Decimal("0")
+        win_rate = (
+            Decimal(str(len(winners))) / Decimal(str(len(closed))) if closed else Decimal("0")
+        )
         avg_winner = gross_profit / len(winners) if winners else Decimal("0")
         avg_loser = gross_loss / len(losers) if losers else Decimal("0")
         profit_factor = gross_profit / gross_loss if gross_loss > 0 else None

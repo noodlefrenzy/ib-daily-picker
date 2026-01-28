@@ -1,0 +1,502 @@
+{% extends "base.html" %}
+
+{% block title %}Correlation Analysis - IB Daily Picker{% endblock %}
+
+{% block head_scripts %}
+<!-- Plotly.js for heatmap -->
+<script src="/static/vendor/plotly-basic.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Correlation Analysis</h1>
+    <p class="text-muted">Analyze correlations between stocks using daily returns</p>
+</div>
+
+<!-- Symbol Selection -->
+<section class="card">
+    <h2>Select Symbols</h2>
+    <div class="symbol-input-group">
+        <input type="text"
+               id="symbol-input"
+               placeholder="Enter symbol (e.g., AAPL)"
+               list="available-symbols">
+        <button class="btn btn-primary" onclick="addSymbol()">Add</button>
+        <button class="btn btn-secondary" onclick="addAllAvailable()">Add All Available</button>
+    </div>
+
+    <datalist id="available-symbols">
+        {% for sym in available_symbols %}
+        <option value="{{ sym }}">
+        {% endfor %}
+        {% for sector, etf in sector_etfs.items() %}
+        <option value="{{ etf }}">{{ sector }} ETF</option>
+        {% endfor %}
+    </datalist>
+
+    <!-- Selected symbols chips -->
+    <div id="selected-symbols" class="symbol-chips">
+        {% for sym in initial_symbols %}
+        <span class="chip">
+            {{ sym }}
+            <button class="chip-remove" onclick="removeSymbol('{{ sym }}')">&times;</button>
+        </span>
+        {% endfor %}
+    </div>
+
+    <!-- Presets -->
+    <div class="preset-buttons">
+        <span class="preset-label">Presets:</span>
+        <button class="btn btn-secondary btn-sm" onclick="loadPreset('tech')">Tech</button>
+        <button class="btn btn-secondary btn-sm" onclick="loadPreset('sectors')">Sector ETFs</button>
+        <button class="btn btn-secondary btn-sm" onclick="loadPreset('watchlist')">Watchlist</button>
+    </div>
+</section>
+
+<!-- Settings -->
+<section class="card">
+    <div class="chart-controls">
+        <h2>Correlation Matrix</h2>
+        <div class="correlation-settings">
+            <label>
+                Time Period:
+                <select id="days-select" onchange="updateCorrelation()">
+                    <option value="30">30 Days</option>
+                    <option value="60">60 Days</option>
+                    <option value="90" selected>90 Days</option>
+                    <option value="180">180 Days</option>
+                    <option value="365">1 Year</option>
+                </select>
+            </label>
+        </div>
+    </div>
+
+    <!-- Correlation Heatmap -->
+    <div id="heatmap-container" class="heatmap-container">
+        <div class="loading-state" id="heatmap-loading">
+            <p>Select at least 2 symbols to view correlations</p>
+        </div>
+    </div>
+</section>
+
+<!-- Correlation Pairs -->
+<section class="card" id="pairs-section" style="display: none;">
+    <h2>Correlation Pairs</h2>
+    <div class="pairs-filters">
+        <button class="btn btn-secondary btn-sm active" onclick="filterPairs('all')">All</button>
+        <button class="btn btn-secondary btn-sm" onclick="filterPairs('high')">High (&gt;0.7)</button>
+        <button class="btn btn-secondary btn-sm" onclick="filterPairs('low')">Low (&lt;0.3)</button>
+        <button class="btn btn-secondary btn-sm" onclick="filterPairs('negative')">Negative</button>
+    </div>
+    <table class="data-table" id="pairs-table">
+        <thead>
+            <tr>
+                <th>Symbol 1</th>
+                <th>Symbol 2</th>
+                <th>Correlation</th>
+                <th>Strength</th>
+            </tr>
+        </thead>
+        <tbody id="pairs-body"></tbody>
+    </table>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // State
+    let selectedSymbols = {{ initial_symbols | tojson }};
+    let correlationData = null;
+    const availableSymbols = {{ available_symbols | tojson }};
+
+    // Presets
+    const presets = {
+        tech: ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'TSLA'],
+        sectors: ['XLK', 'XLV', 'XLF', 'XLY', 'XLC', 'XLI', 'XLP', 'XLE', 'XLU', 'XLRE', 'XLB'],
+        watchlist: availableSymbols.slice(0, 10),
+    };
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+        if (selectedSymbols.length >= 2) {
+            updateCorrelation();
+        }
+    });
+
+    // Symbol input handling
+    document.getElementById('symbol-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            addSymbol();
+        }
+    });
+
+    function addSymbol() {
+        const input = document.getElementById('symbol-input');
+        const symbol = input.value.trim().toUpperCase();
+
+        if (symbol && !selectedSymbols.includes(symbol)) {
+            selectedSymbols.push(symbol);
+            renderSymbolChips();
+            if (selectedSymbols.length >= 2) {
+                updateCorrelation();
+            }
+        }
+
+        input.value = '';
+    }
+
+    function addAllAvailable() {
+        availableSymbols.forEach(sym => {
+            if (!selectedSymbols.includes(sym)) {
+                selectedSymbols.push(sym);
+            }
+        });
+        renderSymbolChips();
+        if (selectedSymbols.length >= 2) {
+            updateCorrelation();
+        }
+    }
+
+    function removeSymbol(symbol) {
+        selectedSymbols = selectedSymbols.filter(s => s !== symbol);
+        renderSymbolChips();
+        if (selectedSymbols.length >= 2) {
+            updateCorrelation();
+        } else {
+            showEmptyState();
+        }
+    }
+
+    function loadPreset(preset) {
+        selectedSymbols = [...presets[preset]];
+        renderSymbolChips();
+        updateCorrelation();
+    }
+
+    function renderSymbolChips() {
+        const container = document.getElementById('selected-symbols');
+        container.innerHTML = selectedSymbols.map(sym => `
+            <span class="chip">
+                ${sym}
+                <button class="chip-remove" onclick="removeSymbol('${sym}')">&times;</button>
+            </span>
+        `).join('');
+
+        // Update URL
+        const url = new URL(window.location);
+        if (selectedSymbols.length > 0) {
+            url.searchParams.set('symbols', selectedSymbols.join(','));
+        } else {
+            url.searchParams.delete('symbols');
+        }
+        history.replaceState({}, '', url);
+    }
+
+    async function updateCorrelation() {
+        if (selectedSymbols.length < 2) {
+            showEmptyState();
+            return;
+        }
+
+        const days = document.getElementById('days-select').value;
+
+        document.getElementById('heatmap-loading').innerHTML = '<p>Loading correlations...</p>';
+        document.getElementById('heatmap-loading').style.display = 'block';
+
+        try {
+            const response = await fetch(
+                `/api/charts/correlation?symbols=${selectedSymbols.join(',')}&days=${days}`
+            );
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'Failed to fetch correlation data');
+            }
+
+            correlationData = await response.json();
+            renderHeatmap(correlationData);
+            renderPairsTable(correlationData);
+
+            document.getElementById('heatmap-loading').style.display = 'none';
+            document.getElementById('pairs-section').style.display = 'block';
+
+        } catch (error) {
+            console.error('Error fetching correlation:', error);
+            document.getElementById('heatmap-loading').innerHTML =
+                `<p class="error">Error: ${error.message}</p>`;
+        }
+    }
+
+    function renderHeatmap(data) {
+        // Color scale: red (-1) to white (0) to green (1)
+        const colorscale = [
+            [0, '#ff5252'],
+            [0.5, '#2d2d44'],
+            [1, '#00c853'],
+        ];
+
+        const trace = {
+            z: data.matrix,
+            x: data.symbols,
+            y: data.symbols,
+            type: 'heatmap',
+            colorscale: colorscale,
+            zmin: -1,
+            zmax: 1,
+            hovertemplate: '%{x} vs %{y}<br>Correlation: %{z:.3f}<extra></extra>',
+            showscale: true,
+            colorbar: {
+                title: 'Correlation',
+                titleside: 'right',
+                tickvals: [-1, -0.5, 0, 0.5, 1],
+                ticktext: ['-1.0', '-0.5', '0', '0.5', '1.0'],
+            },
+        };
+
+        // Add correlation values as annotations
+        const annotations = [];
+        for (let i = 0; i < data.symbols.length; i++) {
+            for (let j = 0; j < data.symbols.length; j++) {
+                const value = data.matrix[i][j];
+                annotations.push({
+                    x: data.symbols[j],
+                    y: data.symbols[i],
+                    text: value.toFixed(2),
+                    showarrow: false,
+                    font: {
+                        color: Math.abs(value) > 0.5 ? '#fff' : '#e8e8e8',
+                        size: data.symbols.length > 8 ? 9 : 11,
+                    },
+                });
+            }
+        }
+
+        const layout = {
+            paper_bgcolor: '#16213e',
+            plot_bgcolor: '#16213e',
+            font: { color: '#e8e8e8' },
+            margin: { t: 50, r: 100, b: 100, l: 100 },
+            xaxis: {
+                side: 'bottom',
+                tickangle: -45,
+            },
+            yaxis: {
+                autorange: 'reversed',
+            },
+            annotations: annotations,
+        };
+
+        const config = {
+            responsive: true,
+            displayModeBar: false,
+        };
+
+        Plotly.newPlot('heatmap-container', [trace], layout, config);
+    }
+
+    function renderPairsTable(data) {
+        const tbody = document.getElementById('pairs-body');
+
+        // Sort by absolute correlation
+        const sortedEntries = [...data.entries].sort(
+            (a, b) => Math.abs(b.correlation) - Math.abs(a.correlation)
+        );
+
+        tbody.innerHTML = sortedEntries.map(entry => {
+            const corr = entry.correlation;
+            const strength = getStrengthLabel(corr);
+            const strengthClass = getStrengthClass(corr);
+
+            return `
+                <tr data-correlation="${corr}">
+                    <td class="mono">${entry.symbol1}</td>
+                    <td class="mono">${entry.symbol2}</td>
+                    <td class="${corr >= 0 ? 'positive' : 'negative'}">${corr.toFixed(4)}</td>
+                    <td><span class="strength-badge ${strengthClass}">${strength}</span></td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function getStrengthLabel(corr) {
+        const abs = Math.abs(corr);
+        if (abs >= 0.9) return 'Very High';
+        if (abs >= 0.7) return 'High';
+        if (abs >= 0.5) return 'Moderate';
+        if (abs >= 0.3) return 'Low';
+        return 'Very Low';
+    }
+
+    function getStrengthClass(corr) {
+        const abs = Math.abs(corr);
+        if (abs >= 0.7) return 'strength-high';
+        if (abs >= 0.5) return 'strength-moderate';
+        return 'strength-low';
+    }
+
+    function filterPairs(filter) {
+        // Update button states
+        document.querySelectorAll('.pairs-filters button').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.textContent.toLowerCase().includes(filter)) {
+                btn.classList.add('active');
+            }
+        });
+
+        const rows = document.querySelectorAll('#pairs-body tr');
+        rows.forEach(row => {
+            const corr = parseFloat(row.dataset.correlation);
+            let show = true;
+
+            switch (filter) {
+                case 'high':
+                    show = Math.abs(corr) > 0.7;
+                    break;
+                case 'low':
+                    show = Math.abs(corr) < 0.3;
+                    break;
+                case 'negative':
+                    show = corr < 0;
+                    break;
+            }
+
+            row.style.display = show ? '' : 'none';
+        });
+    }
+
+    function showEmptyState() {
+        document.getElementById('heatmap-container').innerHTML = `
+            <div class="loading-state" id="heatmap-loading">
+                <p>Select at least 2 symbols to view correlations</p>
+            </div>
+        `;
+        document.getElementById('pairs-section').style.display = 'none';
+    }
+</script>
+
+<style>
+    .symbol-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--spacing-sm);
+        margin-top: var(--spacing-md);
+    }
+
+    .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--spacing-xs);
+        padding: var(--spacing-xs) var(--spacing-sm);
+        background: var(--color-bg-tertiary);
+        border-radius: var(--radius-md);
+        font-family: var(--font-mono);
+        font-size: 0.9rem;
+    }
+
+    .chip-remove {
+        background: none;
+        border: none;
+        color: var(--color-text-muted);
+        cursor: pointer;
+        padding: 0 0 0 var(--spacing-xs);
+        font-size: 1.1rem;
+        line-height: 1;
+    }
+
+    .chip-remove:hover {
+        color: var(--color-negative);
+    }
+
+    .preset-buttons {
+        margin-top: var(--spacing-md);
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+        flex-wrap: wrap;
+    }
+
+    .preset-label {
+        color: var(--color-text-muted);
+        font-size: 0.9rem;
+    }
+
+    .btn-sm {
+        padding: var(--spacing-xs) var(--spacing-sm);
+        font-size: 0.85rem;
+    }
+
+    .correlation-settings {
+        display: flex;
+        gap: var(--spacing-md);
+    }
+
+    .correlation-settings label {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+        font-size: 0.9rem;
+        color: var(--color-text-muted);
+    }
+
+    .correlation-settings select {
+        padding: var(--spacing-xs) var(--spacing-sm);
+        border: 1px solid var(--color-border);
+        background: var(--color-bg-secondary);
+        color: var(--color-text);
+        border-radius: var(--radius-sm);
+    }
+
+    .heatmap-container {
+        min-height: 400px;
+    }
+
+    .loading-state {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 400px;
+        color: var(--color-text-muted);
+    }
+
+    .error {
+        color: var(--color-negative);
+    }
+
+    .pairs-filters {
+        display: flex;
+        gap: var(--spacing-sm);
+        margin-bottom: var(--spacing-md);
+    }
+
+    .pairs-filters button.active {
+        background: var(--color-primary);
+        border-color: var(--color-primary);
+        color: white;
+    }
+
+    .mono {
+        font-family: var(--font-mono);
+    }
+
+    .strength-badge {
+        padding: var(--spacing-xs) var(--spacing-sm);
+        border-radius: var(--radius-sm);
+        font-size: 0.8rem;
+    }
+
+    .strength-high {
+        background: rgba(0, 200, 83, 0.2);
+        color: var(--color-positive);
+    }
+
+    .strength-moderate {
+        background: rgba(255, 170, 0, 0.2);
+        color: var(--color-warning);
+    }
+
+    .strength-low {
+        background: rgba(160, 160, 160, 0.2);
+        color: var(--color-text-muted);
+    }
+</style>
+{% endblock %}

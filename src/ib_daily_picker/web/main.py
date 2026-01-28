@@ -60,6 +60,7 @@ def create_app(db: DatabaseManager | None = None) -> FastAPI:
     # Register routers
     from ib_daily_picker.web.routes.api import analysis as api_analysis
     from ib_daily_picker.web.routes.api import backtest as api_backtest
+    from ib_daily_picker.web.routes.api import charts as api_charts
     from ib_daily_picker.web.routes.api import flows as api_flows
     from ib_daily_picker.web.routes.api import journal as api_journal
     from ib_daily_picker.web.routes.api import signals as api_signals
@@ -69,6 +70,7 @@ def create_app(db: DatabaseManager | None = None) -> FastAPI:
     from ib_daily_picker.web.routes.pages import (
         analysis,
         backtest,
+        charts,
         dashboard,
         journal,
         stocks,
@@ -83,6 +85,7 @@ def create_app(db: DatabaseManager | None = None) -> FastAPI:
     app.include_router(api_strategies.router, prefix="/api", tags=["strategies"])
     app.include_router(api_analysis.router, prefix="/api", tags=["analysis"])
     app.include_router(api_backtest.router, prefix="/api", tags=["backtest"])
+    app.include_router(api_charts.router, prefix="/api", tags=["charts"])
 
     # Page routes
     app.include_router(dashboard.router, tags=["pages"])
@@ -90,6 +93,7 @@ def create_app(db: DatabaseManager | None = None) -> FastAPI:
     app.include_router(journal.router, tags=["pages"])
     app.include_router(analysis.router, tags=["pages"])
     app.include_router(backtest.router, tags=["pages"])
+    app.include_router(charts.router, tags=["pages"])
 
     # Health check
     @app.get("/health")

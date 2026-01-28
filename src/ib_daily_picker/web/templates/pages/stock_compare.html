@@ -1,0 +1,456 @@
+{% extends "base.html" %}
+
+{% block title %}Compare Stocks - IB Daily Picker{% endblock %}
+
+{% block head_scripts %}
+<!-- Plotly.js for comparison charts -->
+<script src="/static/vendor/plotly-basic.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Compare Stocks</h1>
+    <p class="text-muted">Compare normalized price performance of multiple stocks</p>
+</div>
+
+<!-- Symbol Selection -->
+<section class="card">
+    <h2>Select Symbols</h2>
+    <div class="symbol-input-group">
+        <input type="text"
+               id="symbol-input"
+               placeholder="Enter symbol (e.g., AAPL)"
+               list="available-symbols">
+        <button class="btn btn-primary" onclick="addSymbol()">Add</button>
+        <button class="btn btn-secondary" onclick="addBenchmark()">Add {{ benchmark }}</button>
+    </div>
+
+    <datalist id="available-symbols">
+        {% for sym in available_symbols %}
+        <option value="{{ sym }}">
+        {% endfor %}
+        {% for sector, etf in sector_etfs.items() %}
+        <option value="{{ etf }}">{{ sector }} ETF</option>
+        {% endfor %}
+    </datalist>
+
+    <!-- Selected symbols chips -->
+    <div id="selected-symbols" class="symbol-chips">
+        {% for sym in initial_symbols %}
+        <span class="chip">
+            {{ sym }}
+            <button class="chip-remove" onclick="removeSymbol('{{ sym }}')">&times;</button>
+        </span>
+        {% endfor %}
+    </div>
+</section>
+
+<!-- Date Range Selector -->
+<section class="card">
+    <div class="chart-controls">
+        <h2>Performance Comparison</h2>
+        <div class="date-range-selector">
+            <button onclick="setRange('1W')">1W</button>
+            <button onclick="setRange('1M')">1M</button>
+            <button class="active" onclick="setRange('3M')">3M</button>
+            <button onclick="setRange('6M')">6M</button>
+            <button onclick="setRange('1Y')">1Y</button>
+            <button onclick="setRange('YTD')">YTD</button>
+        </div>
+    </div>
+
+    <!-- Comparison Chart -->
+    <div id="comparison-chart" style="height: 500px;"></div>
+
+    <!-- Returns Summary -->
+    <div id="returns-summary" class="returns-summary" style="display: none;">
+        <h3>Total Returns</h3>
+        <div id="returns-cards" class="stats-grid"></div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // State
+    let selectedSymbols = {{ initial_symbols | tojson }};
+    let currentRange = '3M';
+    const benchmark = '{{ benchmark }}';
+
+    // Color mapping: symbol -> color (built from API response)
+    let symbolColorMap = {};
+    let symbolsWithData = new Set();
+
+    // Chart colors
+    const colors = [
+        '#4f9cf9', '#00c853', '#ff5252', '#ffaa00',
+        '#00aaff', '#aa00ff', '#ff00aa', '#00ffaa'
+    ];
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+        if (selectedSymbols.length > 0) {
+            updateChart();
+        } else {
+            renderSymbolChips();
+            showEmptyState();
+        }
+    });
+
+    // Symbol input handling
+    document.getElementById('symbol-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            addSymbol();
+        }
+    });
+
+    function addSymbol() {
+        const input = document.getElementById('symbol-input');
+        const symbol = input.value.trim().toUpperCase();
+
+        if (symbol && !selectedSymbols.includes(symbol)) {
+            selectedSymbols.push(symbol);
+            updateChart();
+        }
+
+        input.value = '';
+    }
+
+    function addBenchmark() {
+        if (!selectedSymbols.includes(benchmark)) {
+            selectedSymbols.push(benchmark);
+            updateChart();
+        }
+    }
+
+    function removeSymbol(symbol) {
+        selectedSymbols = selectedSymbols.filter(s => s !== symbol);
+        // Remove from color map
+        delete symbolColorMap[symbol];
+        symbolsWithData.delete(symbol);
+
+        if (selectedSymbols.length > 0) {
+            updateChart();
+        } else {
+            renderSymbolChips();
+            showEmptyState();
+        }
+    }
+
+    function renderSymbolChips() {
+        const container = document.getElementById('selected-symbols');
+        container.innerHTML = selectedSymbols.map(sym => {
+            const hasData = symbolsWithData.has(sym);
+            const color = symbolColorMap[sym] || '#666';
+            const noDataClass = hasData ? '' : 'no-data';
+            const title = hasData ? '' : 'title="No data available"';
+
+            return `
+                <span class="chip ${noDataClass}" style="border-color: ${color}" ${title}>
+                    <span class="chip-color" style="background: ${color}"></span>
+                    ${sym}
+                    ${!hasData ? '<span class="chip-warning">!</span>' : ''}
+                    <button class="chip-remove" onclick="removeSymbol('${sym}')">&times;</button>
+                </span>
+            `;
+        }).join('');
+
+        // Update URL
+        const url = new URL(window.location);
+        if (selectedSymbols.length > 0) {
+            url.searchParams.set('symbols', selectedSymbols.join(','));
+        } else {
+            url.searchParams.delete('symbols');
+        }
+        history.replaceState({}, '', url);
+    }
+
+    function setRange(range) {
+        currentRange = range;
+
+        // Update button states
+        document.querySelectorAll('.date-range-selector button').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.textContent === range) {
+                btn.classList.add('active');
+            }
+        });
+
+        if (selectedSymbols.length > 0) {
+            updateChart();
+        }
+    }
+
+    async function updateChart() {
+        if (selectedSymbols.length === 0) {
+            showEmptyState();
+            return;
+        }
+
+        try {
+            const response = await fetch(
+                `/api/charts/compare?symbols=${selectedSymbols.join(',')}&range=${currentRange}`
+            );
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch comparison data');
+            }
+
+            const data = await response.json();
+
+            // Build color map from returned series (consistent colors)
+            symbolColorMap = {};
+            symbolsWithData = new Set();
+            data.series.forEach((series, i) => {
+                symbolColorMap[series.symbol] = colors[i % colors.length];
+                symbolsWithData.add(series.symbol);
+            });
+
+            // Update chips to reflect which symbols have data
+            renderSymbolChips();
+
+            // Show warning if some symbols are missing
+            const missingSymbols = selectedSymbols.filter(s => !symbolsWithData.has(s));
+            if (missingSymbols.length > 0) {
+                showMissingWarning(missingSymbols);
+            } else {
+                hideMissingWarning();
+            }
+
+            renderChart(data);
+            renderReturnsSummary(data);
+
+        } catch (error) {
+            console.error('Error fetching comparison:', error);
+            showErrorState(error.message);
+        }
+    }
+
+    function renderChart(data) {
+        if (data.series.length === 0) {
+            showEmptyState();
+            return;
+        }
+
+        const traces = data.series.map(series => ({
+            x: series.data.map(d => d.time),
+            y: series.data.map(d => d.value),
+            name: series.symbol,
+            type: 'scatter',
+            mode: 'lines',
+            line: {
+                color: symbolColorMap[series.symbol],
+                width: 2,
+            },
+            hovertemplate: `%{x}<br>${series.symbol}: %{y:.2f}%<extra></extra>`,
+        }));
+
+        // Add zero line
+        const allTimes = data.series.flatMap(s => s.data.map(d => d.time));
+        if (allTimes.length > 0) {
+            traces.push({
+                x: [allTimes[0], allTimes[allTimes.length - 1]],
+                y: [0, 0],
+                name: 'Baseline',
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#666', width: 1, dash: 'dot' },
+                showlegend: false,
+                hoverinfo: 'skip',
+            });
+        }
+
+        const layout = {
+            paper_bgcolor: '#16213e',
+            plot_bgcolor: '#16213e',
+            font: { color: '#e8e8e8' },
+            margin: { t: 20, r: 50, b: 50, l: 60 },
+            xaxis: {
+                gridcolor: '#2d2d44',
+                linecolor: '#2d2d44',
+                tickformat: '%Y-%m-%d',
+            },
+            yaxis: {
+                gridcolor: '#2d2d44',
+                linecolor: '#2d2d44',
+                title: 'Return (%)',
+                ticksuffix: '%',
+                zeroline: false,
+            },
+            legend: {
+                orientation: 'h',
+                y: -0.15,
+                x: 0.5,
+                xanchor: 'center',
+            },
+            hovermode: 'x unified',
+        };
+
+        const config = {
+            responsive: true,
+            displayModeBar: true,
+            modeBarButtonsToRemove: ['lasso2d', 'select2d'],
+        };
+
+        Plotly.newPlot('comparison-chart', traces, layout, config);
+    }
+
+    function renderReturnsSummary(data) {
+        const container = document.getElementById('returns-summary');
+        const cardsContainer = document.getElementById('returns-cards');
+
+        if (data.series.length === 0) {
+            container.style.display = 'none';
+            return;
+        }
+
+        container.style.display = 'block';
+
+        cardsContainer.innerHTML = data.series.map(series => `
+            <div class="stat-card">
+                <div class="stat-value ${series.total_return >= 0 ? 'positive' : 'negative'}">
+                    ${series.total_return >= 0 ? '+' : ''}${series.total_return.toFixed(2)}%
+                </div>
+                <div class="stat-label" style="color: ${symbolColorMap[series.symbol]}">
+                    ${series.symbol}
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function showMissingWarning(symbols) {
+        let warning = document.getElementById('missing-warning');
+        if (!warning) {
+            warning = document.createElement('div');
+            warning.id = 'missing-warning';
+            warning.className = 'missing-warning';
+            document.getElementById('comparison-chart').parentNode.insertBefore(
+                warning, document.getElementById('comparison-chart')
+            );
+        }
+        warning.innerHTML = `<strong>No data:</strong> ${symbols.join(', ')}`;
+        warning.style.display = 'block';
+    }
+
+    function hideMissingWarning() {
+        const warning = document.getElementById('missing-warning');
+        if (warning) {
+            warning.style.display = 'none';
+        }
+    }
+
+    function showEmptyState() {
+        document.getElementById('comparison-chart').innerHTML = `
+            <div class="empty-state">
+                <p>Add symbols above to compare their performance</p>
+            </div>
+        `;
+        document.getElementById('returns-summary').style.display = 'none';
+        hideMissingWarning();
+    }
+
+    function showErrorState(message) {
+        document.getElementById('comparison-chart').innerHTML = `
+            <div class="empty-state error">
+                <p>Error: ${message}</p>
+            </div>
+        `;
+    }
+</script>
+
+<style>
+    .symbol-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--spacing-sm);
+        margin-top: var(--spacing-md);
+    }
+
+    .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--spacing-xs);
+        padding: var(--spacing-xs) var(--spacing-sm);
+        background: var(--color-bg-tertiary);
+        border-radius: var(--radius-md);
+        font-family: var(--font-mono);
+        font-size: 0.9rem;
+        border: 2px solid var(--color-border);
+    }
+
+    .chip-color {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+    }
+
+    .chip-remove {
+        background: none;
+        border: none;
+        color: var(--color-text-muted);
+        cursor: pointer;
+        padding: 0 0 0 var(--spacing-xs);
+        font-size: 1.1rem;
+        line-height: 1;
+    }
+
+    .chip-remove:hover {
+        color: var(--color-negative);
+    }
+
+    .chip.no-data {
+        opacity: 0.6;
+        border-style: dashed;
+    }
+
+    .chip-warning {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 16px;
+        height: 16px;
+        background: var(--color-warning);
+        color: #000;
+        border-radius: 50%;
+        font-size: 0.7rem;
+        font-weight: bold;
+        margin-left: var(--spacing-xs);
+    }
+
+    .missing-warning {
+        background: rgba(255, 193, 7, 0.15);
+        border: 1px solid var(--color-warning);
+        color: var(--color-warning);
+        padding: var(--spacing-sm) var(--spacing-md);
+        border-radius: var(--radius-sm);
+        margin-bottom: var(--spacing-md);
+        font-size: 0.9rem;
+    }
+
+    .returns-summary {
+        margin-top: var(--spacing-lg);
+        padding-top: var(--spacing-md);
+        border-top: 1px solid var(--color-border);
+    }
+
+    .returns-summary h3 {
+        margin-bottom: var(--spacing-md);
+        color: var(--color-text-muted);
+        font-size: 0.9rem;
+        text-transform: uppercase;
+    }
+
+    .empty-state {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        min-height: 300px;
+        color: var(--color-text-muted);
+    }
+
+    .empty-state.error {
+        color: var(--color-negative);
+    }
+</style>
+{% endblock %}

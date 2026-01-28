@@ -22,10 +22,18 @@
         </div>
         <div class="navbar-menu">
             <a href="/" class="nav-link {% if request.url.path == '/' %}active{% endif %}">Dashboard</a>
-            <a href="/stocks" class="nav-link {% if '/stocks' in request.url.path %}active{% endif %}">Stocks</a>
+            <a href="/stocks" class="nav-link {% if '/stocks' in request.url.path and '/charts' not in request.url.path %}active{% endif %}">Stocks</a>
             <a href="/journal" class="nav-link {% if '/journal' in request.url.path %}active{% endif %}">Journal</a>
             <a href="/analysis" class="nav-link {% if '/analysis' in request.url.path %}active{% endif %}">Analysis</a>
             <a href="/backtest" class="nav-link {% if '/backtest' in request.url.path %}active{% endif %}">Backtest</a>
+            <div class="nav-dropdown">
+                <a href="#" class="nav-link {% if '/charts' in request.url.path %}active{% endif %}">Charts</a>
+                <div class="nav-dropdown-content">
+                    <a href="/charts/compare">Compare Stocks</a>
+                    <a href="/charts/portfolio">Portfolio Analytics</a>
+                    <a href="/charts/correlations">Correlations</a>
+                </div>
+            </div>
         </div>
     </nav>
 

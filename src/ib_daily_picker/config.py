@@ -134,6 +134,26 @@ class RiskProfile(BaseSettings):
     )
 
 
+# Sector ETF mappings for comparison charts
+SECTOR_ETFS: dict[str, str] = {
+    "Technology": "XLK",
+    "Healthcare": "XLV",
+    "Financial": "XLF",
+    "Financial Services": "XLF",
+    "Consumer Cyclical": "XLY",
+    "Consumer Defensive": "XLP",
+    "Communication Services": "XLC",
+    "Industrials": "XLI",
+    "Energy": "XLE",
+    "Utilities": "XLU",
+    "Real Estate": "XLRE",
+    "Basic Materials": "XLB",
+}
+
+# Market benchmark for comparisons
+MARKET_BENCHMARK = "SPY"
+
+
 class BasketSettings(BaseSettings):
     """Stock basket configuration."""
 

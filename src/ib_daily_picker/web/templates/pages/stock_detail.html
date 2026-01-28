@@ -18,6 +18,7 @@
             {% endif %}
         </div>
         <div class="stock-actions">
+            <a href="/charts/compare?symbols={{ symbol }}" class="btn btn-secondary">Compare</a>
             {% if in_watchlist %}
             <button class="btn btn-secondary"
                     hx-delete="/api/watchlist/{{ symbol }}"
@@ -73,10 +74,33 @@
         </div>
     </section>
 
-    <!-- Chart -->
+    <!-- Chart Controls -->
     <section class="card">
-        <h2>Price Chart</h2>
-        <div id="chart" style="height: 400px;"></div>
+        <div class="chart-controls">
+            <h2>Price Chart</h2>
+            <div class="indicator-toggles">
+                <label class="toggle-label">
+                    <input type="checkbox" id="toggle-sma50" checked> SMA 50
+                </label>
+                <label class="toggle-label">
+                    <input type="checkbox" id="toggle-sma200" checked> SMA 200
+                </label>
+                <label class="toggle-label">
+                    <input type="checkbox" id="toggle-volume" checked> Volume
+                </label>
+                <label class="toggle-label">
+                    <input type="checkbox" id="toggle-markers" checked> Flow Alerts
+                </label>
+            </div>
+        </div>
+        <div id="price-chart" style="height: 400px;"></div>
+        <div id="volume-chart" style="height: 100px;"></div>
+        <div class="chart-legend">
+            <span class="legend-item"><span class="legend-color" style="background: #ffaa00;"></span> SMA 50</span>
+            <span class="legend-item"><span class="legend-color" style="background: #00aaff;"></span> SMA 200</span>
+            <span class="legend-item"><span class="legend-color" style="background: #00c853;"></span> Bullish Alert</span>
+            <span class="legend-item"><span class="legend-color" style="background: #ff5252;"></span> Bearish Alert</span>
+        </div>
     </section>
 
     <!-- Flow Alerts -->
@@ -120,12 +144,18 @@
 
 {% block scripts %}
 <script>
-    // Initialize chart
+    // Chart data from server
     const chartData = {{ chart_data | tojson }};
+    const indicatorData = {{ indicator_data | tojson }};
+    const flowMarkers = {{ flow_markers | tojson }};
 
-    const chartContainer = document.getElementById('chart');
-    const chart = LightweightCharts.createChart(chartContainer, {
-        width: chartContainer.clientWidth,
+    // Chart containers
+    const priceContainer = document.getElementById('price-chart');
+    const volumeContainer = document.getElementById('volume-chart');
+
+    // Create main price chart
+    const priceChart = LightweightCharts.createChart(priceContainer, {
+        width: priceContainer.clientWidth,
         height: 400,
         layout: {
             background: { type: 'solid', color: '#16213e' },
@@ -147,7 +177,29 @@
         },
     });
 
-    const candlestickSeries = chart.addCandlestickSeries({
+    // Create volume chart (separate pane)
+    const volumeChart = LightweightCharts.createChart(volumeContainer, {
+        width: volumeContainer.clientWidth,
+        height: 100,
+        layout: {
+            background: { type: 'solid', color: '#16213e' },
+            textColor: '#e8e8e8',
+        },
+        grid: {
+            vertLines: { color: '#2d2d44' },
+            horzLines: { visible: false },
+        },
+        rightPriceScale: {
+            borderColor: '#2d2d44',
+            scaleMargins: { top: 0.1, bottom: 0 },
+        },
+        timeScale: {
+            visible: false,
+        },
+    });
+
+    // Candlestick series
+    const candlestickSeries = priceChart.addCandlestickSeries({
         upColor: '#00c853',
         downColor: '#ff5252',
         borderDownColor: '#ff5252',
@@ -155,15 +207,88 @@
         wickDownColor: '#ff5252',
         wickUpColor: '#00c853',
     });
-
     candlestickSeries.setData(chartData);
 
+    // Add flow alert markers to candlestick series
+    if (flowMarkers && flowMarkers.length > 0) {
+        candlestickSeries.setMarkers(flowMarkers);
+    }
+
+    // SMA 50 line series
+    const sma50Series = priceChart.addLineSeries({
+        color: '#ffaa00',
+        lineWidth: 1,
+        title: 'SMA 50',
+        priceLineVisible: false,
+        lastValueVisible: false,
+    });
+    if (indicatorData.sma_50) {
+        const sma50Data = indicatorData.sma_50.filter(d => d.value !== null);
+        sma50Series.setData(sma50Data);
+    }
+
+    // SMA 200 line series
+    const sma200Series = priceChart.addLineSeries({
+        color: '#00aaff',
+        lineWidth: 1,
+        title: 'SMA 200',
+        priceLineVisible: false,
+        lastValueVisible: false,
+    });
+    if (indicatorData.sma_200) {
+        const sma200Data = indicatorData.sma_200.filter(d => d.value !== null);
+        sma200Series.setData(sma200Data);
+    }
+
+    // Volume histogram series
+    const volumeSeries = volumeChart.addHistogramSeries({
+        color: '#26a69a',
+        priceFormat: { type: 'volume' },
+        priceScaleId: '',
+    });
+    const volumeData = chartData.map(d => ({
+        time: d.time,
+        value: d.volume,
+        color: d.close >= d.open ? 'rgba(0, 200, 83, 0.5)' : 'rgba(255, 82, 82, 0.5)',
+    }));
+    volumeSeries.setData(volumeData);
+
+    // Sync time scales
+    priceChart.timeScale().subscribeVisibleTimeRangeChange((range) => {
+        if (range) {
+            volumeChart.timeScale().setVisibleRange(range);
+        }
+    });
+
     // Fit content
-    chart.timeScale().fitContent();
+    priceChart.timeScale().fitContent();
+    volumeChart.timeScale().fitContent();
 
     // Handle resize
     window.addEventListener('resize', () => {
-        chart.applyOptions({ width: chartContainer.clientWidth });
+        priceChart.applyOptions({ width: priceContainer.clientWidth });
+        volumeChart.applyOptions({ width: volumeContainer.clientWidth });
+    });
+
+    // Toggle controls
+    document.getElementById('toggle-sma50').addEventListener('change', (e) => {
+        sma50Series.applyOptions({ visible: e.target.checked });
+    });
+
+    document.getElementById('toggle-sma200').addEventListener('change', (e) => {
+        sma200Series.applyOptions({ visible: e.target.checked });
+    });
+
+    document.getElementById('toggle-volume').addEventListener('change', (e) => {
+        volumeContainer.style.display = e.target.checked ? 'block' : 'none';
+    });
+
+    document.getElementById('toggle-markers').addEventListener('change', (e) => {
+        if (e.target.checked && flowMarkers && flowMarkers.length > 0) {
+            candlestickSeries.setMarkers(flowMarkers);
+        } else {
+            candlestickSeries.setMarkers([]);
+        }
     });
 </script>
 {% endblock %}

@@ -392,3 +392,163 @@ class TestBacktestAPI:
         data = response.json()
         assert "strategies" in data
         assert "rankings" in data
+
+
+class TestChartsAPI:
+    """Test the charts API endpoints."""
+
+    def test_compare_requires_symbols(self) -> None:
+        """Compare endpoint requires at least one symbol."""
+        app = create_app()
+        client = TestClient(app)
+
+        response = client.get("/api/charts/compare")
+
+        assert response.status_code == 400
+        assert "symbol" in response.json()["detail"].lower()
+
+    def test_compare_with_symbols(self) -> None:
+        """Compare endpoint accepts symbols parameter."""
+        app = create_app()
+        client = TestClient(app)
+
+        response = client.get("/api/charts/compare?symbols=AAPL,MSFT")
+
+        # May return 404 if no data, but should be valid request format
+        assert response.status_code in [200, 404]
+
+    def test_compare_with_range(self) -> None:
+        """Compare endpoint accepts range parameter."""
+        app = create_app()
+        client = TestClient(app)
+
+        response = client.get("/api/charts/compare?symbols=AAPL&range=1M")
+
+        # May return 404 if no data
+        assert response.status_code in [200, 404]
+
+    def test_indicators_not_found(self) -> None:
+        """Indicators endpoint returns 404 for non-existent symbol."""
+        app = create_app()
+        client = TestClient(app)
+
+        response = client.get("/api/charts/indicators/NONEXISTENT")
+
+        assert response.status_code == 404
+
+    def test_indicators_with_params(self) -> None:
+        """Indicators endpoint accepts indicator parameter."""
+        app = create_app()
+        client = TestClient(app)
+
+        response = client.get("/api/charts/indicators/AAPL?indicators=sma_50,rsi")
+
+        # May return 404 if no data
+        assert response.status_code in [200, 404]
+
+    def test_correlation_requires_symbols(self) -> None:
+        """Correlation endpoint requires at least 2 symbols."""
+        app = create_app()
+        client = TestClient(app)
+
+        response = client.get("/api/charts/correlation?symbols=AAPL")
+
+        assert response.status_code == 400
+        assert "2 symbols" in response.json()["detail"].lower()
+
+    def test_correlation_with_symbols(self) -> None:
+        """Correlation endpoint accepts multiple symbols."""
+        app = create_app()
+        client = TestClient(app)
+
+        response = client.get("/api/charts/correlation?symbols=AAPL,MSFT,GOOGL")
+
+        # May return 404/400 if insufficient data
+        assert response.status_code in [200, 400, 404]
+
+    def test_sector_etf_lookup(self) -> None:
+        """Sector ETF lookup returns mapping."""
+        app = create_app()
+        client = TestClient(app)
+
+        response = client.get("/api/charts/sector-etf/Technology")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "etf" in data
+        assert data["etf"] == "XLK"
+
+    def test_sector_etf_not_found(self) -> None:
+        """Sector ETF returns 404 for unknown sector."""
+        app = create_app()
+        client = TestClient(app)
+
+        response = client.get("/api/charts/sector-etf/UnknownSector")
+
+        assert response.status_code == 404
+
+    def test_list_sector_etfs(self) -> None:
+        """List sector ETFs returns all mappings."""
+        app = create_app()
+        client = TestClient(app)
+
+        response = client.get("/api/charts/sector-etfs")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "etfs" in data
+        assert "benchmark" in data
+        assert data["benchmark"] == "SPY"
+        assert "Technology" in data["etfs"]
+
+
+class TestChartPages:
+    """Test the chart HTML pages."""
+
+    def test_compare_page_renders(self) -> None:
+        """Compare page renders successfully."""
+        app = create_app()
+        client = TestClient(app)
+
+        response = client.get("/charts/compare")
+
+        assert response.status_code == 200
+        assert "text/html" in response.headers["content-type"]
+        content = response.text
+        assert "Compare" in content
+        assert "Plotly" in content or "plotly" in content
+
+    def test_compare_page_with_symbols(self) -> None:
+        """Compare page accepts initial symbols."""
+        app = create_app()
+        client = TestClient(app)
+
+        response = client.get("/charts/compare?symbols=AAPL,MSFT")
+
+        assert response.status_code == 200
+        content = response.text
+        assert "AAPL" in content
+
+    def test_portfolio_page_renders(self) -> None:
+        """Portfolio page renders successfully."""
+        app = create_app()
+        client = TestClient(app)
+
+        response = client.get("/charts/portfolio")
+
+        assert response.status_code == 200
+        assert "text/html" in response.headers["content-type"]
+        content = response.text
+        assert "Portfolio" in content
+
+    def test_correlations_page_renders(self) -> None:
+        """Correlations page renders successfully."""
+        app = create_app()
+        client = TestClient(app)
+
+        response = client.get("/charts/correlations")
+
+        assert response.status_code == 200
+        assert "text/html" in response.headers["content-type"]
+        content = response.text
+        assert "Correlation" in content

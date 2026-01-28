@@ -9,9 +9,11 @@ from __future__ import annotations
 
 from typing import Annotated
 
+import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
 
+from ib_daily_picker.analysis.indicators import IndicatorCalculator
 from ib_daily_picker.store.database import DatabaseManager
 from ib_daily_picker.store.repositories import FlowRepository, StockRepository
 from ib_daily_picker.web.dependencies import get_db
@@ -86,6 +88,7 @@ async def stock_detail(
     flow_alerts = flow_repo.get_by_symbol(symbol, limit=20)
 
     # Prepare chart data (reverse for chronological order)
+    # Include volume for histogram
     chart_data = [
         {
             "time": o.trade_date.isoformat(),
@@ -93,9 +96,41 @@ async def stock_detail(
             "high": float(o.high_price),
             "low": float(o.low_price),
             "close": float(o.close_price),
+            "volume": o.volume,
         }
         for o in reversed(ohlcv_list)
     ]
+
+    # Calculate indicators for overlay
+    indicator_data = {}
+    if ohlcv_list:
+        calc = IndicatorCalculator(list(reversed(ohlcv_list)))
+        sma_50 = calc.calculate("SMA", "sma_50", {"period": 50})
+        sma_200 = calc.calculate("SMA", "sma_200", {"period": 200})
+
+        # Convert to chart-compatible format (aligned with OHLCV dates)
+        indicator_data["sma_50"] = [
+            {"time": chart_data[i]["time"], "value": float(v) if not pd.isna(v) else None}
+            for i, v in enumerate(sma_50.values)
+        ]
+        indicator_data["sma_200"] = [
+            {"time": chart_data[i]["time"], "value": float(v) if not pd.isna(v) else None}
+            for i, v in enumerate(sma_200.values)
+        ]
+
+    # Prepare flow alert markers for chart
+    flow_markers = []
+    for alert in flow_alerts:
+        marker_time = alert.alert_time.date().isoformat()
+        flow_markers.append(
+            {
+                "time": marker_time,
+                "position": "aboveBar" if alert.direction.value == "bullish" else "belowBar",
+                "color": "#00c853" if alert.sentiment.value == "bullish" else "#ff5252",
+                "shape": "arrowUp" if alert.direction.value == "bullish" else "arrowDown",
+                "text": alert.alert_type.value[:3].upper(),
+            }
+        )
 
     # Calculate key stats
     latest = ohlcv_list[0]
@@ -117,6 +152,8 @@ async def stock_detail(
         "metadata": metadata,
         "stats": stats,
         "chart_data": chart_data,
+        "indicator_data": indicator_data,
+        "flow_markers": flow_markers,
         "flow_alerts": flow_alerts,
         "in_watchlist": in_watchlist,
     }
@@ -124,7 +161,7 @@ async def stock_detail(
     return templates.TemplateResponse(request, "pages/stock_detail.html", context)
 
 
-def _calculate_change_pct(ohlcv_list: list) -> float | None:
+def _calculate_change_pct(ohlcv_list: list) -> float | None:  # type: ignore[type-arg]
     """Calculate daily change percentage."""
     if len(ohlcv_list) < 2:
         return None

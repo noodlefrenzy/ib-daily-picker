@@ -1,0 +1,428 @@
+{% extends "base.html" %}
+
+{% block title %}Portfolio Analytics - IB Daily Picker{% endblock %}
+
+{% block head_scripts %}
+<!-- Plotly.js for portfolio charts -->
+<script src="/static/vendor/plotly-basic.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Portfolio Analytics</h1>
+    <p class="text-muted">Performance metrics and visualizations for your trading journal</p>
+</div>
+
+<!-- Metrics Summary -->
+<section class="card">
+    <h2>Performance Summary</h2>
+    <div id="metrics-loading" class="loading-state">Loading metrics...</div>
+    <div id="metrics-container" class="portfolio-stats" style="display: none;"></div>
+</section>
+
+<!-- Charts Grid -->
+<div class="charts-grid">
+    <!-- Equity Curve -->
+    <section class="chart-card">
+        <h3>Equity Curve</h3>
+        <div id="equity-chart" style="height: 300px;"></div>
+    </section>
+
+    <!-- Returns Distribution -->
+    <section class="chart-card">
+        <h3>Returns Distribution</h3>
+        <div id="returns-chart" style="height: 300px;"></div>
+    </section>
+
+    <!-- Drawdown Chart -->
+    <section class="chart-card">
+        <h3>Drawdown</h3>
+        <div id="drawdown-chart" style="height: 300px;"></div>
+    </section>
+
+    <!-- Win/Loss Breakdown -->
+    <section class="chart-card">
+        <h3>Win/Loss Breakdown</h3>
+        <div id="winloss-chart" style="height: 300px;"></div>
+    </section>
+</div>
+
+<!-- Trade History -->
+<section class="card">
+    <h2>Recent Trades</h2>
+    <div id="trades-loading" class="loading-state">Loading trades...</div>
+    <div id="trades-container" style="display: none;">
+        <table class="data-table" id="trades-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Symbol</th>
+                    <th>Direction</th>
+                    <th>Entry</th>
+                    <th>Exit</th>
+                    <th>P&L</th>
+                    <th>R-Multiple</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="trades-body"></tbody>
+        </table>
+    </div>
+    <div id="no-trades" class="empty-state" style="display: none;">
+        <p>No trades recorded yet. Start journaling trades from the <a href="/journal">Journal</a> page.</p>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Plotly dark theme config
+    const plotlyLayout = {
+        paper_bgcolor: '#16213e',
+        plot_bgcolor: '#16213e',
+        font: { color: '#e8e8e8', size: 11 },
+        margin: { t: 10, r: 20, b: 40, l: 50 },
+        xaxis: { gridcolor: '#2d2d44', linecolor: '#2d2d44' },
+        yaxis: { gridcolor: '#2d2d44', linecolor: '#2d2d44' },
+    };
+
+    const plotlyConfig = {
+        responsive: true,
+        displayModeBar: false,
+    };
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', async () => {
+        await Promise.all([
+            loadMetrics(),
+            loadTrades(),
+        ]);
+    });
+
+    async function loadMetrics() {
+        try {
+            const response = await fetch('/api/journal/metrics');
+            if (!response.ok) throw new Error('Failed to load metrics');
+
+            const metrics = await response.json();
+            renderMetrics(metrics);
+            document.getElementById('metrics-loading').style.display = 'none';
+            document.getElementById('metrics-container').style.display = 'grid';
+        } catch (error) {
+            document.getElementById('metrics-loading').innerHTML =
+                `<p class="error">Error loading metrics: ${error.message}</p>`;
+        }
+    }
+
+    function renderMetrics(metrics) {
+        const container = document.getElementById('metrics-container');
+
+        const items = [
+            { label: 'Total Trades', value: metrics.total_trades, format: 'number' },
+            { label: 'Win Rate', value: metrics.win_rate, format: 'percent' },
+            { label: 'Total P&L', value: metrics.total_pnl, format: 'currency' },
+            { label: 'Profit Factor', value: metrics.profit_factor, format: 'decimal' },
+            { label: 'Avg Win', value: metrics.average_win, format: 'currency', positive: true },
+            { label: 'Avg Loss', value: metrics.average_loss, format: 'currency', negative: true },
+            { label: 'Avg R-Multiple', value: metrics.average_r_multiple, format: 'decimal' },
+            { label: 'Winners/Losers', value: `${metrics.winning_trades}/${metrics.losing_trades}`, format: 'text' },
+        ];
+
+        container.innerHTML = items.map(item => {
+            let displayValue = '-';
+            let valueClass = '';
+
+            if (item.value !== null && item.value !== undefined) {
+                switch (item.format) {
+                    case 'number':
+                        displayValue = item.value.toLocaleString();
+                        break;
+                    case 'percent':
+                        displayValue = `${(item.value * 100).toFixed(1)}%`;
+                        if (item.value >= 0.5) valueClass = 'positive';
+                        else if (item.value < 0.4) valueClass = 'negative';
+                        break;
+                    case 'currency':
+                        const num = parseFloat(item.value);
+                        displayValue = `$${num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                        if (!item.negative && num > 0) valueClass = 'positive';
+                        else if (!item.positive && num < 0) valueClass = 'negative';
+                        break;
+                    case 'decimal':
+                        displayValue = parseFloat(item.value).toFixed(2);
+                        if (item.value > 0) valueClass = 'positive';
+                        else if (item.value < 0) valueClass = 'negative';
+                        break;
+                    default:
+                        displayValue = item.value;
+                }
+            }
+
+            return `
+                <div class="portfolio-stat">
+                    <div class="value ${valueClass}">${displayValue}</div>
+                    <div class="label">${item.label}</div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    async function loadTrades() {
+        try {
+            const response = await fetch('/api/journal/trades?limit=100');
+            if (!response.ok) throw new Error('Failed to load trades');
+
+            const data = await response.json();
+
+            if (data.trades.length === 0) {
+                document.getElementById('trades-loading').style.display = 'none';
+                document.getElementById('no-trades').style.display = 'flex';
+                showEmptyCharts();
+                return;
+            }
+
+            renderTrades(data.trades);
+            renderCharts(data.trades);
+
+            document.getElementById('trades-loading').style.display = 'none';
+            document.getElementById('trades-container').style.display = 'block';
+        } catch (error) {
+            document.getElementById('trades-loading').innerHTML =
+                `<p class="error">Error loading trades: ${error.message}</p>`;
+        }
+    }
+
+    function renderTrades(trades) {
+        const tbody = document.getElementById('trades-body');
+
+        tbody.innerHTML = trades.slice(0, 20).map(trade => {
+            const pnl = trade.pnl ? parseFloat(trade.pnl) : null;
+            const pnlClass = pnl !== null ? (pnl >= 0 ? 'positive' : 'negative') : '';
+            const pnlDisplay = pnl !== null ? `$${pnl.toFixed(2)}` : '-';
+
+            const rMultiple = trade.r_multiple ? parseFloat(trade.r_multiple).toFixed(2) + 'R' : '-';
+
+            return `
+                <tr>
+                    <td>${new Date(trade.entry_time).toLocaleDateString()}</td>
+                    <td class="mono">${trade.symbol}</td>
+                    <td class="${trade.direction === 'long' ? 'positive' : 'negative'}">
+                        ${trade.direction.toUpperCase()}
+                    </td>
+                    <td>$${parseFloat(trade.entry_price).toFixed(2)}</td>
+                    <td>${trade.exit_price ? '$' + parseFloat(trade.exit_price).toFixed(2) : '-'}</td>
+                    <td class="${pnlClass}">${pnlDisplay}</td>
+                    <td>${rMultiple}</td>
+                    <td><span class="status-badge status-${trade.status}">${trade.status}</span></td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function renderCharts(trades) {
+        // Filter to closed trades for P&L analysis
+        const closedTrades = trades.filter(t => t.status === 'closed' && t.pnl);
+
+        if (closedTrades.length === 0) {
+            showEmptyCharts();
+            return;
+        }
+
+        // Sort by date
+        closedTrades.sort((a, b) => new Date(a.exit_time) - new Date(b.exit_time));
+
+        renderEquityCurve(closedTrades);
+        renderReturnsDistribution(closedTrades);
+        renderDrawdown(closedTrades);
+        renderWinLoss(closedTrades);
+    }
+
+    function renderEquityCurve(trades) {
+        // Calculate cumulative P&L
+        let cumulative = 0;
+        const data = trades.map(t => {
+            cumulative += parseFloat(t.pnl);
+            return {
+                date: new Date(t.exit_time),
+                value: cumulative,
+            };
+        });
+
+        const trace = {
+            x: data.map(d => d.date),
+            y: data.map(d => d.value),
+            type: 'scatter',
+            mode: 'lines',
+            fill: 'tozeroy',
+            fillcolor: 'rgba(79, 156, 249, 0.2)',
+            line: { color: '#4f9cf9', width: 2 },
+            hovertemplate: '%{x}<br>P&L: $%{y:.2f}<extra></extra>',
+        };
+
+        const layout = {
+            ...plotlyLayout,
+            yaxis: {
+                ...plotlyLayout.yaxis,
+                title: 'Cumulative P&L ($)',
+            },
+        };
+
+        Plotly.newPlot('equity-chart', [trace], layout, plotlyConfig);
+    }
+
+    function renderReturnsDistribution(trades) {
+        const pnls = trades.map(t => parseFloat(t.pnl));
+
+        const trace = {
+            x: pnls,
+            type: 'histogram',
+            marker: {
+                color: pnls.map(p => p >= 0 ? 'rgba(0, 200, 83, 0.7)' : 'rgba(255, 82, 82, 0.7)'),
+            },
+            hovertemplate: '%{x}: %{y} trades<extra></extra>',
+        };
+
+        const layout = {
+            ...plotlyLayout,
+            xaxis: {
+                ...plotlyLayout.xaxis,
+                title: 'P&L ($)',
+            },
+            yaxis: {
+                ...plotlyLayout.yaxis,
+                title: 'Frequency',
+            },
+            bargap: 0.05,
+        };
+
+        Plotly.newPlot('returns-chart', [trace], layout, plotlyConfig);
+    }
+
+    function renderDrawdown(trades) {
+        // Calculate running peak and drawdown
+        let cumulative = 0;
+        let peak = 0;
+        const data = trades.map(t => {
+            cumulative += parseFloat(t.pnl);
+            peak = Math.max(peak, cumulative);
+            const drawdown = peak > 0 ? ((cumulative - peak) / peak) * 100 : 0;
+            return {
+                date: new Date(t.exit_time),
+                drawdown: drawdown,
+            };
+        });
+
+        const trace = {
+            x: data.map(d => d.date),
+            y: data.map(d => d.drawdown),
+            type: 'scatter',
+            mode: 'lines',
+            fill: 'tozeroy',
+            fillcolor: 'rgba(255, 82, 82, 0.3)',
+            line: { color: '#ff5252', width: 2 },
+            hovertemplate: '%{x}<br>Drawdown: %{y:.1f}%<extra></extra>',
+        };
+
+        const layout = {
+            ...plotlyLayout,
+            yaxis: {
+                ...plotlyLayout.yaxis,
+                title: 'Drawdown (%)',
+                ticksuffix: '%',
+            },
+        };
+
+        Plotly.newPlot('drawdown-chart', [trace], layout, plotlyConfig);
+    }
+
+    function renderWinLoss(trades) {
+        const wins = trades.filter(t => parseFloat(t.pnl) >= 0);
+        const losses = trades.filter(t => parseFloat(t.pnl) < 0);
+
+        const totalWin = wins.reduce((sum, t) => sum + parseFloat(t.pnl), 0);
+        const totalLoss = Math.abs(losses.reduce((sum, t) => sum + parseFloat(t.pnl), 0));
+
+        const trace = {
+            labels: ['Wins', 'Losses'],
+            values: [wins.length, losses.length],
+            type: 'pie',
+            hole: 0.5,
+            marker: {
+                colors: ['#00c853', '#ff5252'],
+            },
+            textinfo: 'label+value',
+            textposition: 'outside',
+            hovertemplate: '%{label}: %{value} trades (%{percent})<extra></extra>',
+        };
+
+        const layout = {
+            ...plotlyLayout,
+            showlegend: false,
+            annotations: [{
+                text: `${(wins.length / trades.length * 100).toFixed(0)}%<br>Win Rate`,
+                showarrow: false,
+                font: { size: 14, color: '#e8e8e8' },
+            }],
+        };
+
+        Plotly.newPlot('winloss-chart', [trace], layout, plotlyConfig);
+    }
+
+    function showEmptyCharts() {
+        const message = '<div class="empty-state"><p>No closed trades to analyze</p></div>';
+        ['equity-chart', 'returns-chart', 'drawdown-chart', 'winloss-chart'].forEach(id => {
+            document.getElementById(id).innerHTML = message;
+        });
+    }
+</script>
+
+<style>
+    .loading-state {
+        padding: var(--spacing-lg);
+        text-align: center;
+        color: var(--color-text-muted);
+    }
+
+    .empty-state {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 200px;
+        color: var(--color-text-muted);
+    }
+
+    .empty-state a {
+        color: var(--color-primary);
+    }
+
+    .error {
+        color: var(--color-negative);
+    }
+
+    .mono {
+        font-family: var(--font-mono);
+    }
+
+    .status-badge {
+        padding: var(--spacing-xs) var(--spacing-sm);
+        border-radius: var(--radius-sm);
+        font-size: 0.8rem;
+        text-transform: uppercase;
+    }
+
+    .status-open {
+        background: rgba(79, 156, 249, 0.2);
+        color: var(--color-primary);
+    }
+
+    .status-closed {
+        background: rgba(0, 200, 83, 0.2);
+        color: var(--color-positive);
+    }
+
+    .status-cancelled {
+        background: rgba(160, 160, 160, 0.2);
+        color: var(--color-text-muted);
+    }
+</style>
+{% endblock %}

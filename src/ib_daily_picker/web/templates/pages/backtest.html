@@ -18,7 +18,7 @@
                     <select id="strategy" name="strategy" required>
                         <option value="">Select a strategy...</option>
                         {% for s in strategies %}
-                        <option value="{{ s.name }}">{{ s.name }} (v{{ s.version }})</option>
+                        <option value="{{ s.file.replace('.yaml', '').replace('.yml', '') }}">{{ s.name }} (v{{ s.version }})</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -116,7 +116,7 @@
                 <div class="strategy-checkboxes">
                     {% for s in strategies %}
                     <label class="checkbox-label">
-                        <input type="checkbox" name="compare_strategies" value="{{ s.name }}">
+                        <input type="checkbox" name="compare_strategies" value="{{ s.file.replace('.yaml', '').replace('.yml', '') }}">
                         {{ s.name }}
                     </label>
                     {% endfor %}

@@ -13,8 +13,8 @@
             <span class="version">v{{ strat.version }}</span>
             <p class="description">{{ strat.description or 'No description' }}</p>
             <div class="strategy-actions">
-                <a href="/strategies/{{ strat.name }}" class="btn btn-small btn-secondary">View Details</a>
-                <a href="/analysis?strategy={{ strat.name }}" class="btn btn-small btn-primary">Run Analysis</a>
+                <a href="/strategies/{{ strat.file.replace('.yaml', '').replace('.yml', '') }}" class="btn btn-small btn-secondary">View Details</a>
+                <a href="/analysis?strategy={{ strat.file.replace('.yaml', '').replace('.yml', '') }}" class="btn btn-small btn-primary">Run Analysis</a>
             </div>
         </div>
         {% endfor %}

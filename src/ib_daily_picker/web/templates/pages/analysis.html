@@ -15,7 +15,7 @@
                     <label for="strategy">Strategy</label>
                     <select id="strategy" name="strategy" required>
                         {% for strat in strategies %}
-                        <option value="{{ strat.name }}">{{ strat.name }} (v{{ strat.version }})</option>
+                        <option value="{{ strat.file.replace('.yaml', '').replace('.yml', '') }}">{{ strat.name }} (v{{ strat.version }})</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -105,7 +105,7 @@
                 <h3>{{ strat.name }}</h3>
                 <span class="version">v{{ strat.version }}</span>
                 <p class="description">{{ strat.description or 'No description' }}</p>
-                <a href="/strategies/{{ strat.name }}" class="btn btn-small btn-secondary">View Details</a>
+                <a href="/strategies/{{ strat.file.replace('.yaml', '').replace('.yml', '') }}" class="btn btn-small btn-secondary">View Details</a>
             </div>
             {% endfor %}
         </div>

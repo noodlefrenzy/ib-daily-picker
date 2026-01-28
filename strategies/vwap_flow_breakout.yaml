@@ -1,0 +1,83 @@
+# VWAP Breakout with Flow Strategy
+#
+# Identifies price breaking above VWAP with strong volume
+# and confirms with institutional flow data.
+
+strategy:
+  name: "VWAP Flow Breakout"
+  version: "1.0.0"
+  description: "Buy breakouts above VWAP confirmed by institutional flow"
+  author: "IB Daily Picker"
+  tags: ["breakout", "flow", "vwap", "volume"]
+
+indicators:
+  - name: "vwap"
+    type: "VWAP"
+    params: {}
+
+  - name: "volume_sma_20"
+    type: "VOLUME_SMA"
+    params:
+      period: 20
+
+  - name: "rsi_14"
+    type: "RSI"
+    params:
+      period: 14
+      source: "close"
+
+  - name: "ema_9"
+    type: "EMA"
+    params:
+      period: 9
+      source: "close"
+
+  - name: "atr_14"
+    type: "ATR"
+    params:
+      period: 14
+
+entry:
+  conditions:
+    # RSI showing strength
+    - type: "indicator_threshold"
+      indicator: "rsi_14"
+      operator: "gt"
+      value: 50
+
+    # RSI not extremely overbought
+    - type: "indicator_threshold"
+      indicator: "rsi_14"
+      operator: "lt"
+      value: 75
+
+    # Large bullish flow (institutional activity)
+    - type: "flow_signal"
+      direction: "bullish"
+      min_premium: 150000
+      recency_minutes: 90
+
+  logic: "all"
+
+exit:
+  take_profit:
+    type: "percentage"
+    value: 5.0
+
+  stop_loss:
+    type: "atr_multiple"
+    value: 1.5
+    multiplier: 1.5
+
+  trailing_stop:
+    type: "percentage"
+    value: 3.0
+
+risk:
+  profile: "aggressive"
+  min_risk_reward: 1.5
+
+filters:
+  min_volume: 2000000
+  min_price: 20.0
+  max_price: 300.0

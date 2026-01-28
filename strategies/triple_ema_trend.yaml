@@ -1,0 +1,92 @@
+# Triple EMA Trend Following Strategy (Stock Data Only)
+#
+# Uses EMA 8/21/55 alignment to identify strong trends.
+# Enter on pullbacks within the trend - no flow data required.
+
+strategy:
+  name: "Triple EMA Trend"
+  version: "1.0.0"
+  description: "Trade pullbacks in strong trends using EMA 8/21/55 alignment"
+  author: "IB Daily Picker"
+  tags: ["trend-following", "stock-only", "ema", "pullback"]
+
+indicators:
+  - name: "ema_8"
+    type: "EMA"
+    params:
+      period: 8
+      source: "close"
+
+  - name: "ema_21"
+    type: "EMA"
+    params:
+      period: 21
+      source: "close"
+
+  - name: "ema_55"
+    type: "EMA"
+    params:
+      period: 55
+      source: "close"
+
+  - name: "rsi_14"
+    type: "RSI"
+    params:
+      period: 14
+      source: "close"
+
+  - name: "atr_14"
+    type: "ATR"
+    params:
+      period: 14
+
+entry:
+  conditions:
+    # EMA 8 above EMA 21 (short-term trend up)
+    - type: "indicator_threshold"
+      indicator: "ema_8"
+      operator: "gt"
+      value: "ema_21"
+
+    # EMA 21 above EMA 55 (medium-term trend up)
+    - type: "indicator_threshold"
+      indicator: "ema_21"
+      operator: "gt"
+      value: "ema_55"
+
+    # RSI showing pullback (not overbought)
+    - type: "indicator_threshold"
+      indicator: "rsi_14"
+      operator: "lt"
+      value: 60
+
+    # RSI not too weak
+    - type: "indicator_threshold"
+      indicator: "rsi_14"
+      operator: "gt"
+      value: 40
+
+  logic: "all"
+
+exit:
+  take_profit:
+    type: "percentage"
+    value: 8.0
+
+  stop_loss:
+    type: "atr_multiple"
+    value: 2.0
+    multiplier: 2.0
+
+  trailing_stop:
+    type: "percentage"
+    value: 5.0
+
+risk:
+  profile: "moderate"
+  min_risk_reward: 2.0
+
+filters:
+  min_volume: 750000
+  min_price: 20.0
+  max_price: 500.0

@@ -1,0 +1,77 @@
+# Bollinger Band Mean Reversion Strategy (Stock Data Only)
+#
+# Buy when price touches lower Bollinger Band with oversold RSI.
+# Classic mean reversion play - no flow data required.
+
+strategy:
+  name: "Bollinger Band Reversal"
+  version: "1.0.0"
+  description: "Buy oversold conditions at lower Bollinger Band for mean reversion"
+  author: "IB Daily Picker"
+  tags: ["mean-reversion", "stock-only", "bollinger"]
+
+indicators:
+  - name: "bb_20"
+    type: "BOLLINGER"
+    params:
+      period: 20
+      std_dev: 2.0
+
+  - name: "rsi_14"
+    type: "RSI"
+    params:
+      period: 14
+      source: "close"
+
+  - name: "sma_50"
+    type: "SMA"
+    params:
+      period: 50
+      source: "close"
+
+  - name: "atr_14"
+    type: "ATR"
+    params:
+      period: 14
+
+entry:
+  conditions:
+    # RSI oversold
+    - type: "indicator_threshold"
+      indicator: "rsi_14"
+      operator: "lt"
+      value: 30
+
+    # RSI not extremely oversold (avoid falling knives)
+    - type: "indicator_threshold"
+      indicator: "rsi_14"
+      operator: "gt"
+      value: 15
+
+  logic: "all"
+
+exit:
+  take_profit:
+    type: "percentage"
+    value: 4.0
+
+  stop_loss:
+    type: "atr_multiple"
+    value: 1.5
+    multiplier: 1.5
+
+  trailing_stop:
+    type: "percentage"
+    value: 2.5
+
+  # Time-based exit for mean reversion
+  time_exit_bars: 10
+
+risk:
+  profile: "conservative"
+  min_risk_reward: 1.5
+
+filters:
+  min_volume: 1000000
+  min_price: 15.0
+  max_price: 300.0

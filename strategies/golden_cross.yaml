@@ -1,0 +1,74 @@
+# Golden Cross Strategy (Stock Data Only)
+#
+# Classic trend-following strategy using SMA 50/200 crossover.
+# No flow data required - works with price data only.
+
+strategy:
+  name: "Golden Cross"
+  version: "1.0.0"
+  description: "Buy when 50-day SMA crosses above 200-day SMA with RSI confirmation"
+  author: "IB Daily Picker"
+  tags: ["trend-following", "stock-only", "moving-average"]
+
+indicators:
+  - name: "sma_50"
+    type: "SMA"
+    params:
+      period: 50
+      source: "close"
+
+  - name: "sma_200"
+    type: "SMA"
+    params:
+      period: 200
+      source: "close"
+
+  - name: "rsi_14"
+    type: "RSI"
+    params:
+      period: 14
+      source: "close"
+
+  - name: "atr_14"
+    type: "ATR"
+    params:
+      period: 14
+
+entry:
+  conditions:
+    # SMA 50 crosses above SMA 200
+    - type: "indicator_threshold"
+      indicator: "sma_50"
+      operator: "cross_above"
+      value: "sma_200"
+
+    # RSI not overbought (avoid chasing)
+    - type: "indicator_threshold"
+      indicator: "rsi_14"
+      operator: "lt"
+      value: 70
+
+  logic: "all"
+
+exit:
+  take_profit:
+    type: "percentage"
+    value: 15.0
+
+  stop_loss:
+    type: "atr_multiple"
+    value: 3.0
+    multiplier: 3.0
+
+  trailing_stop:
+    type: "percentage"
+    value: 8.0
+
+risk:
+  profile: "moderate"
+  min_risk_reward: 2.0
+
+filters:
+  min_volume: 500000
+  min_price: 10.0
+  max_price: 1000.0

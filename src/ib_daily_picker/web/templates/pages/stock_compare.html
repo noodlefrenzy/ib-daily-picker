@@ -22,7 +22,7 @@
                placeholder="Enter symbol (e.g., AAPL)"
                list="available-symbols">
         <button class="btn btn-primary" onclick="addSymbol()">Add</button>
-        <button class="btn btn-secondary" onclick="addBenchmark()">Add {{ benchmark }}</button>
+        <button id="benchmark-btn" class="btn btn-secondary" onclick="toggleBenchmark()">Add {{ benchmark }}</button>
         <span id="dynamic-etf-buttons"></span>
     </div>
 
@@ -99,6 +99,7 @@
             await fetchSymbolSector(symbol);
         }
         renderDynamicETFButtons();
+        updateBenchmarkButton();
 
         if (selectedSymbols.length > 0) {
             updateChart();
@@ -144,8 +145,10 @@
         }
     }
 
-    function addSectorETF(etf) {
-        if (!selectedSymbols.includes(etf)) {
+    function toggleSectorETF(etf) {
+        if (selectedSymbols.includes(etf)) {
+            removeSymbol(etf);
+        } else {
             selectedSymbols.push(etf);
             updateChart();
             renderDynamicETFButtons();
@@ -161,27 +164,40 @@
             const sector = symbolSectors[symbol];
             if (sector && sectorETFs[sector]) {
                 const etf = sectorETFs[sector];
-                // Only show button if ETF not already selected
-                if (!selectedSymbols.includes(etf)) {
-                    relevantETFs.add(JSON.stringify({ sector, etf }));
-                }
+                relevantETFs.add(JSON.stringify({ sector, etf }));
             }
         }
 
-        // Render buttons
+        // Render toggle buttons (Add if not selected, Rem if selected)
         const buttons = Array.from(relevantETFs).map(json => {
             const { sector, etf } = JSON.parse(json);
-            return `<button class="btn btn-secondary btn-sm" onclick="addSectorETF('${etf}')" title="${sector} sector ETF">Add ${etf}</button>`;
+            const isSelected = selectedSymbols.includes(etf);
+            const label = isSelected ? `Rem ${etf}` : `Add ${etf}`;
+            const btnClass = isSelected ? 'btn-toggle-active' : 'btn-secondary';
+            return `<button class="btn ${btnClass} btn-sm" onclick="toggleSectorETF('${etf}')" title="${sector} sector ETF">${label}</button>`;
         });
 
         container.innerHTML = buttons.join('');
+
+        // Also update benchmark button
+        updateBenchmarkButton();
     }
 
-    function addBenchmark() {
-        if (!selectedSymbols.includes(benchmark)) {
+    function toggleBenchmark() {
+        if (selectedSymbols.includes(benchmark)) {
+            removeSymbol(benchmark);
+        } else {
             selectedSymbols.push(benchmark);
             updateChart();
         }
+        updateBenchmarkButton();
+    }
+
+    function updateBenchmarkButton() {
+        const btn = document.getElementById('benchmark-btn');
+        const isSelected = selectedSymbols.includes(benchmark);
+        btn.textContent = isSelected ? `Rem ${benchmark}` : `Add ${benchmark}`;
+        btn.className = isSelected ? 'btn btn-toggle-active' : 'btn btn-secondary';
     }
 
     function removeSymbol(symbol) {
@@ -192,6 +208,7 @@
         symbolsWithData.delete(symbol);
 
         renderDynamicETFButtons();
+        updateBenchmarkButton();
 
         if (selectedSymbols.length > 0) {
             updateChart();
@@ -526,6 +543,18 @@
     .btn-sm {
         padding: var(--spacing-xs) var(--spacing-sm);
         font-size: 0.85rem;
+    }
+
+    .btn-toggle-active {
+        background: var(--color-bg-tertiary);
+        color: var(--color-text-muted);
+        border: 1px solid var(--color-primary);
+    }
+
+    .btn-toggle-active:hover {
+        background: var(--color-negative);
+        color: white;
+        border-color: var(--color-negative);
     }
 </style>
 {% endblock %}

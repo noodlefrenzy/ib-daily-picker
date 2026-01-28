@@ -26,14 +26,9 @@
             <a href="/journal" class="nav-link {% if '/journal' in request.url.path %}active{% endif %}">Journal</a>
             <a href="/analysis" class="nav-link {% if '/analysis' in request.url.path %}active{% endif %}">Analysis</a>
             <a href="/backtest" class="nav-link {% if '/backtest' in request.url.path %}active{% endif %}">Backtest</a>
-            <div class="nav-dropdown">
-                <a href="#" class="nav-link {% if '/charts' in request.url.path %}active{% endif %}">Charts</a>
-                <div class="nav-dropdown-content">
-                    <a href="/charts/compare">Compare Stocks</a>
-                    <a href="/charts/portfolio">Portfolio Analytics</a>
-                    <a href="/charts/correlations">Correlations</a>
-                </div>
-            </div>
+            <a href="/charts/compare" class="nav-link {% if '/charts/compare' in request.url.path %}active{% endif %}">Compare</a>
+            <a href="/charts/portfolio" class="nav-link {% if '/charts/portfolio' in request.url.path %}active{% endif %}">Portfolio</a>
+            <a href="/charts/correlations" class="nav-link {% if '/charts/correlations' in request.url.path %}active{% endif %}">Correlations</a>
         </div>
     </nav>
 

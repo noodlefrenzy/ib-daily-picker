@@ -93,20 +93,22 @@ async def run_analysis(
         evaluator = StrategyEvaluator(strategy)
         result = evaluator.evaluate(symbol, ohlcv)
 
-        if result.signal and result.signal.signal_type.value in ["buy", "sell"]:
+        if result.entry_signal:
             signals_list.append(
                 SignalResult(
                     symbol=result.symbol,
-                    signal_type=result.signal.signal_type.value,
-                    entry_price=str(result.signal.entry_price)
-                    if result.signal.entry_price
+                    signal_type="buy",  # Entry signals are buy signals
+                    entry_price=str(result.current_price)
+                    if result.current_price
                     else None,
-                    stop_loss=str(result.signal.stop_loss) if result.signal.stop_loss else None,
-                    take_profit=str(result.signal.take_profit)
-                    if result.signal.take_profit
+                    stop_loss=str(result.suggested_stop_loss)
+                    if result.suggested_stop_loss
                     else None,
-                    confidence=float(result.signal.confidence),
-                    reasoning=result.signal.reasoning,
+                    take_profit=str(result.suggested_take_profit)
+                    if result.suggested_take_profit
+                    else None,
+                    confidence=float(result.confidence),
+                    reasoning=result.reasoning,
                 )
             )
 
@@ -184,11 +186,11 @@ async def stream_analysis(
             evaluator = StrategyEvaluator(strat)
             result = evaluator.evaluate(symbol, ohlcv)
 
-            if result.signal and result.signal.signal_type.value in ["buy", "sell"]:
+            if result.entry_signal:
                 signal_data = {
                     "symbol": result.symbol,
-                    "signal_type": result.signal.signal_type.value,
-                    "confidence": float(result.signal.confidence),
+                    "signal_type": "buy",  # Entry signals are buy signals
+                    "confidence": float(result.confidence),
                 }
                 signals_found.append(signal_data)
                 yield f"data: {json.dumps({'type': 'signal', 'signal': signal_data})}\n\n"

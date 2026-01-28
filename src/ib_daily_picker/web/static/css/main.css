@@ -128,7 +128,17 @@ code {
     min-width: 180px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     z-index: 100;
-    margin-top: var(--spacing-xs);
+    padding-top: var(--spacing-xs);
+}
+
+.nav-dropdown-content::before {
+    /* Invisible bridge to maintain hover state */
+    content: '';
+    position: absolute;
+    top: calc(-1 * var(--spacing-xs));
+    left: 0;
+    right: 0;
+    height: var(--spacing-xs);
 }
 
 .nav-dropdown:hover .nav-dropdown-content {

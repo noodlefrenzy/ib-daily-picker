@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - IB Daily Picker{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <h1>Dashboard</h1>
+
+    <!-- Portfolio Summary -->
+    <section class="card">
+        <h2>Portfolio Summary</h2>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">{{ open_trades_count }}</div>
+                <div class="stat-label">Open Positions</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${{ "%.2f"|format(total_invested) }}</div>
+                <div class="stat-label">Total Invested</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ total_trades }}</div>
+                <div class="stat-label">Total Trades</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ "%.1f"|format(win_rate) }}%</div>
+                <div class="stat-label">Win Rate</div>
+            </div>
+            <div class="stat-card {% if total_pnl and total_pnl > 0 %}positive{% elif total_pnl and total_pnl < 0 %}negative{% endif %}">
+                <div class="stat-value">${{ "%.2f"|format(total_pnl) if total_pnl else "0.00" }}</div>
+                <div class="stat-label">Total P&L</div>
+            </div>
+            {% if profit_factor %}
+            <div class="stat-card">
+                <div class="stat-value">{{ "%.2f"|format(profit_factor) }}</div>
+                <div class="stat-label">Profit Factor</div>
+            </div>
+            {% endif %}
+        </div>
+    </section>
+
+    <!-- Open Positions -->
+    {% if open_trades %}
+    <section class="card">
+        <h2>Open Positions</h2>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Symbol</th>
+                    <th>Direction</th>
+                    <th>Entry Price</th>
+                    <th>Size</th>
+                    <th>Stop Loss</th>
+                    <th>Target</th>
+                    <th>Opened</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for trade in open_trades %}
+                <tr>
+                    <td class="symbol">{{ trade.symbol }}</td>
+                    <td class="{% if trade.direction.value == 'long' %}positive{% else %}negative{% endif %}">
+                        {{ trade.direction.value|upper }}
+                    </td>
+                    <td>${{ "%.2f"|format(trade.entry_price) }}</td>
+                    <td>{{ trade.position_size }}</td>
+                    <td>{% if trade.stop_loss %}${{ "%.2f"|format(trade.stop_loss) }}{% else %}-{% endif %}</td>
+                    <td>{% if trade.take_profit %}${{ "%.2f"|format(trade.take_profit) }}{% else %}-{% endif %}</td>
+                    <td class="timestamp">{{ trade.entry_time.strftime('%Y-%m-%d %H:%M') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+    {% endif %}
+
+    <!-- Recent Signals -->
+    <section class="card">
+        <h2>Pending Signals ({{ pending_signals_count }})</h2>
+        {% if recent_signals %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Symbol</th>
+                    <th>Type</th>
+                    <th>Entry</th>
+                    <th>Stop</th>
+                    <th>Target</th>
+                    <th>Confidence</th>
+                    <th>Strategy</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for signal in recent_signals %}
+                <tr>
+                    <td class="symbol">{{ signal.symbol }}</td>
+                    <td class="{% if signal.signal_type.value == 'buy' %}positive{% else %}negative{% endif %}">
+                        {{ signal.signal_type.value|upper }}
+                    </td>
+                    <td>{% if signal.entry_price %}${{ "%.2f"|format(signal.entry_price) }}{% else %}-{% endif %}</td>
+                    <td>{% if signal.stop_loss %}${{ "%.2f"|format(signal.stop_loss) }}{% else %}-{% endif %}</td>
+                    <td>{% if signal.take_profit %}${{ "%.2f"|format(signal.take_profit) }}{% else %}-{% endif %}</td>
+                    <td>{{ "%.0f"|format(signal.confidence * 100) }}%</td>
+                    <td>{{ signal.strategy_name }}</td>
+                    <td>
+                        <button class="btn btn-small btn-primary"
+                                hx-post="/api/signals/{{ signal.id }}/execute"
+                                hx-swap="outerHTML">
+                            Execute
+                        </button>
+                        <button class="btn btn-small btn-secondary"
+                                hx-post="/api/signals/{{ signal.id }}/skip"
+                                hx-target="closest tr"
+                                hx-swap="outerHTML">
+                            Skip
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="empty-state">No pending signals. Run analysis to generate new signals.</p>
+        {% endif %}
+    </section>
+
+    <!-- Data Status -->
+    <section class="card">
+        <h2>Data Status</h2>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">{{ stock_count }}</div>
+                <div class="stat-label">Stocks Tracked</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ "{:,}".format(ohlcv_rows) }}</div>
+                <div class="stat-label">OHLCV Records</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ latest_data_date if latest_data_date else 'N/A' }}</div>
+                <div class="stat-label">Latest Data</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ "{:,}".format(flow_count) }}</div>
+                <div class="stat-label">Flow Alerts</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Watchlist -->
+    <section class="card">
+        <h2>Watchlist ({{ watchlist_count }})</h2>
+        {% if watchlist %}
+        <div class="watchlist-grid">
+            {% for item in watchlist %}
+            <div class="watchlist-item">
+                <a href="/stocks/{{ item.symbol }}" class="symbol">{{ item.symbol }}</a>
+                {% if item.notes %}
+                <span class="notes">{{ item.notes }}</span>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="empty-state">Watchlist empty. Add symbols with the CLI: <code>ib-picker watchlist add AAPL,MSFT</code></p>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

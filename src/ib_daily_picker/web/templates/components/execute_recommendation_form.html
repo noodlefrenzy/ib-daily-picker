@@ -1,0 +1,43 @@
+<div class="modal-overlay" id="execute-form-modal" onclick="if(event.target === this) this.remove()">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Execute: {{ rec.symbol }} {{ rec.signal_type.value|upper }}</h3>
+            <button class="modal-close" onclick="document.getElementById('execute-form-modal').remove()">&times;</button>
+        </div>
+        <div class="recommendation-summary">
+            <p><strong>Strategy:</strong> {{ rec.strategy_name }}</p>
+            <p><strong>Suggested Entry:</strong> ${{ "%.2f"|format(rec.entry_price) if rec.entry_price else 'N/A' }}</p>
+            <p><strong>Stop Loss:</strong> ${{ "%.2f"|format(rec.stop_loss) if rec.stop_loss else 'N/A' }}</p>
+            <p><strong>Take Profit:</strong> ${{ "%.2f"|format(rec.take_profit) if rec.take_profit else 'N/A' }}</p>
+            {% if rec.reasoning %}
+            <p class="reasoning"><em>{{ rec.reasoning }}</em></p>
+            {% endif %}
+        </div>
+        <form hx-post="/api/recommendations/{{ rec.id }}/execute"
+              hx-target="body"
+              hx-headers='{"Content-Type": "application/json"}'
+              hx-ext="json-enc">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="entry_price">Entry Price</label>
+                    <input type="number" id="entry_price" name="entry_price" step="0.01" required
+                           value="{{ "%.2f"|format(rec.entry_price) if rec.entry_price else '' }}">
+                </div>
+                <div class="form-group">
+                    <label for="position_size">Position Size</label>
+                    <input type="number" id="position_size" name="position_size" step="0.01" required
+                           value="{{ rec.position_size if rec.position_size else '' }}">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="notes">Notes</label>
+                <textarea id="notes" name="notes" rows="3"></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary"
+                        onclick="document.getElementById('execute-form-modal').remove()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Execute Trade</button>
+            </div>
+        </form>
+    </div>
+</div>

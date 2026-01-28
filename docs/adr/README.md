@@ -12,6 +12,7 @@ This directory contains Architecture Decision Records (ADRs) for the IB Daily Pi
 | [ADR-004](004-cli-framework.md) | CLI Framework (Typer + Rich) | Accepted | 2026-01-26 |
 | [ADR-005](005-strategy-format.md) | Strategy Definition Format (YAML) | Accepted | 2026-01-26 |
 | [ADR-006](006-llm-integration.md) | LLM Integration (Anthropic + Ollama) | Accepted | 2026-01-26 |
+| [ADR-007](007-web-framework.md) | Web Framework (FastAPI + Jinja2) | Accepted | 2026-01-28 |
 
 ## ADR Process
 

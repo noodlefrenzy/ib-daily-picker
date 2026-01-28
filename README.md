@@ -12,6 +12,7 @@ A Python CLI tool that identifies promising stock trading opportunities by corre
 - **Trade Journal**: Track recommendations, executions, and outcomes
 - **Backtesting Engine**: Evaluate strategies against historical data with walk-forward validation
 - **Risk Profiles**: Conservative, moderate, and aggressive position sizing
+- **Web Interface**: Browser-based UI with dashboard, trade forms, and REST API
 
 ## Installation
 
@@ -244,6 +245,69 @@ ib-picker scan --output log                            # Simple log format for c
 30 9 * * 1-5 /path/to/ib-picker scan --output log >> ~/ib-picker-scans.log 2>&1
 ```
 
+## Web Interface
+
+The application includes a web UI for visual interaction with all features.
+
+### Starting the Web Server
+
+```bash
+# Start web server (default: http://127.0.0.1:8000)
+ib-picker serve
+
+# Custom host/port
+ib-picker serve --host 0.0.0.0 --port 8080
+
+# Development mode with auto-reload
+ib-picker serve --reload
+```
+
+### Web Pages
+
+| Page | URL | Description |
+|------|-----|-------------|
+| Dashboard | `/` | Overview with recent signals, watchlist, market status |
+| Stocks | `/stocks` | Browse stocks with prices and indicators |
+| Stock Detail | `/stocks/{symbol}` | Detailed view with charts and flow data |
+| Journal | `/journal` | Trade journal with open/close/execute forms |
+| Analysis | `/analysis` | Run strategies and view signals |
+| Backtest | `/backtest` | Configure and run backtests |
+| Strategies | `/strategies` | Browse and view strategy definitions |
+
+### REST API
+
+The web server exposes a REST API at `/api/*` for programmatic access:
+
+```bash
+# List stocks
+curl http://localhost:8000/api/stocks
+
+# Get stock detail
+curl http://localhost:8000/api/stocks/AAPL
+
+# List signals
+curl http://localhost:8000/api/signals
+
+# Run analysis
+curl -X POST http://localhost:8000/api/analysis/run \
+  -H "Content-Type: application/json" \
+  -d '{"strategy": "example_rsi_flow", "symbols": ["AAPL", "MSFT"]}'
+```
+
+### API Documentation
+
+Interactive API documentation is available when the server is running:
+
+- **Swagger UI**: http://localhost:8000/api/docs
+- **ReDoc**: http://localhost:8000/api/redoc
+
+### Health Check
+
+```bash
+curl http://localhost:8000/health
+# {"status": "ok", "service": "ib-daily-picker"}
+```
+
 ## Strategy Format
 
 Strategies are defined in YAML files. See `strategies/example_rsi_flow.yaml` for a complete example.
@@ -338,9 +402,15 @@ ib-daily-picker/
 │   ├── journal/            # Trade journal management
 │   ├── llm/                # LLM strategy conversion
 │   ├── models/             # Domain models (Stock, Flow, Trade)
-│   └── store/              # Database layer (DuckDB + SQLite)
+│   ├── store/              # Database layer (DuckDB + SQLite)
+│   └── web/                # FastAPI web application
+│       ├── main.py         # App factory
+│       ├── routes/api/     # REST API endpoints
+│       ├── routes/pages/   # Server-rendered pages
+│       ├── templates/      # Jinja2 templates
+│       └── static/         # CSS, JS assets
 ├── strategies/             # YAML strategy definitions
-├── tests/                  # Test suite (111 tests)
+├── tests/                  # Test suite
 └── docs/adr/               # Architecture Decision Records
 ```
 
@@ -349,6 +419,7 @@ ib-daily-picker/
 | Layer | Technology |
 |-------|------------|
 | CLI | Typer + Rich |
+| Web | FastAPI + Jinja2 + uvicorn |
 | Config | pydantic-settings |
 | Stock Data | yfinance (primary) + Finnhub (fallback) |
 | Flow Data | Unusual Whales API |

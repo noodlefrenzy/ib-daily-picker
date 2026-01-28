@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+
+{% block title %}Analysis - IB Daily Picker{% endblock %}
+
+{% block content %}
+<div class="analysis-page">
+    <h1>Analysis</h1>
+
+    <!-- Run Analysis -->
+    <section class="card">
+        <h2>Run Analysis</h2>
+        <form id="analysis-form" onsubmit="runAnalysis(event)">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="strategy">Strategy</label>
+                    <select id="strategy" name="strategy" required>
+                        {% for strat in strategies %}
+                        <option value="{{ strat.name }}">{{ strat.name }} (v{{ strat.version }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="symbols">Symbols (comma-separated, or blank for default)</label>
+                    <input type="text" id="symbols" name="symbols" placeholder="{{ default_symbols|join(', ') }}">
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary" id="run-btn">Run Analysis</button>
+            </div>
+        </form>
+
+        <!-- Progress -->
+        <div id="progress-container" style="display: none;">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill" style="width: 0%;"></div>
+            </div>
+            <p id="progress-text">Analyzing...</p>
+        </div>
+
+        <!-- Results -->
+        <div id="results-container" style="display: none;">
+            <h3>Results</h3>
+            <div id="results-list"></div>
+        </div>
+    </section>
+
+    <!-- Pending Signals -->
+    {% if pending_recommendations %}
+    <section class="card">
+        <h2>Pending Signals ({{ pending_recommendations|length }})</h2>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Symbol</th>
+                    <th>Signal</th>
+                    <th>Entry</th>
+                    <th>Stop</th>
+                    <th>Target</th>
+                    <th>Confidence</th>
+                    <th>Strategy</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rec in pending_recommendations %}
+                <tr id="rec-{{ rec.id }}">
+                    <td class="symbol">
+                        <a href="/stocks/{{ rec.symbol }}">{{ rec.symbol }}</a>
+                    </td>
+                    <td class="{% if rec.signal_type.value == 'buy' %}positive{% else %}negative{% endif %}">
+                        {{ rec.signal_type.value|upper }}
+                    </td>
+                    <td>{% if rec.entry_price %}${{ "%.2f"|format(rec.entry_price) }}{% else %}-{% endif %}</td>
+                    <td>{% if rec.stop_loss %}${{ "%.2f"|format(rec.stop_loss) }}{% else %}-{% endif %}</td>
+                    <td>{% if rec.take_profit %}${{ "%.2f"|format(rec.take_profit) }}{% else %}-{% endif %}</td>
+                    <td>{{ "%.0f"|format(rec.confidence * 100) }}%</td>
+                    <td>{{ rec.strategy_name }}</td>
+                    <td>
+                        <button class="btn btn-small btn-primary"
+                                hx-get="/journal/recommendations/{{ rec.id }}/execute-form"
+                                hx-target="#modal-container"
+                                hx-swap="innerHTML">
+                            Execute
+                        </button>
+                        <button class="btn btn-small btn-secondary"
+                                hx-post="/api/signals/{{ rec.id }}/skip"
+                                hx-target="#rec-{{ rec.id }}"
+                                hx-swap="outerHTML">
+                            Skip
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+    {% endif %}
+
+    <!-- Available Strategies -->
+    <section class="card">
+        <h2>Available Strategies ({{ strategies|length }})</h2>
+        <div class="strategy-grid">
+            {% for strat in strategies %}
+            <div class="strategy-card">
+                <h3>{{ strat.name }}</h3>
+                <span class="version">v{{ strat.version }}</span>
+                <p class="description">{{ strat.description or 'No description' }}</p>
+                <a href="/strategies/{{ strat.name }}" class="btn btn-small btn-secondary">View Details</a>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+
+<!-- Modal container for forms -->
+<div id="modal-container"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function runAnalysis(event) {
+    event.preventDefault();
+
+    const strategy = document.getElementById('strategy').value;
+    const symbols = document.getElementById('symbols').value;
+    const progressContainer = document.getElementById('progress-container');
+    const resultsContainer = document.getElementById('results-container');
+    const resultsList = document.getElementById('results-list');
+    const progressFill = document.getElementById('progress-fill');
+    const progressText = document.getElementById('progress-text');
+    const runBtn = document.getElementById('run-btn');
+
+    // Show progress
+    progressContainer.style.display = 'block';
+    resultsContainer.style.display = 'none';
+    resultsList.innerHTML = '';
+    runBtn.disabled = true;
+
+    // Build URL
+    let url = `/api/analyze/stream?strategy=${encodeURIComponent(strategy)}`;
+    if (symbols) {
+        url += `&symbols=${encodeURIComponent(symbols)}`;
+    }
+
+    const eventSource = new EventSource(url);
+
+    eventSource.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+
+        switch (data.type) {
+            case 'start':
+                progressText.textContent = `Starting analysis with ${data.strategy}...`;
+                break;
+
+            case 'progress':
+                const percent = (data.current / data.total) * 100;
+                progressFill.style.width = percent + '%';
+                progressText.textContent = `Analyzing ${data.symbol} (${data.current}/${data.total})`;
+                break;
+
+            case 'signal':
+                const signal = data.signal;
+                const signalClass = signal.signal_type === 'buy' ? 'positive' : 'negative';
+                resultsList.innerHTML += `
+                    <div class="signal-item ${signalClass}">
+                        <strong>${signal.symbol}</strong>: ${signal.signal_type.toUpperCase()}
+                        (${Math.round(signal.confidence * 100)}% confidence)
+                    </div>
+                `;
+                break;
+
+            case 'skip':
+                console.log(`Skipped ${data.symbol}: ${data.reason}`);
+                break;
+
+            case 'complete':
+                progressFill.style.width = '100%';
+                progressText.textContent = `Complete! Found ${data.total_signals} signals.`;
+                resultsContainer.style.display = 'block';
+                runBtn.disabled = false;
+                eventSource.close();
+                break;
+
+            case 'error':
+                progressText.textContent = `Error: ${data.message}`;
+                runBtn.disabled = false;
+                eventSource.close();
+                break;
+        }
+    };
+
+    eventSource.onerror = function() {
+        progressText.textContent = 'Connection error. Please try again.';
+        runBtn.disabled = false;
+        eventSource.close();
+    };
+}
+</script>
+{% endblock %}

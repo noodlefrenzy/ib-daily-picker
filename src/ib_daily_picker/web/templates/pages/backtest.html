@@ -1,0 +1,480 @@
+{% extends "base.html" %}
+
+{% block title %}Backtest - IB Daily Picker{% endblock %}
+
+{% block content %}
+<div class="backtest-page">
+    <div class="page-header">
+        <h1>Backtest</h1>
+    </div>
+
+    <!-- Configuration Form -->
+    <section class="card">
+        <h2>Configuration</h2>
+        <form id="backtest-form" class="backtest-form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="strategy">Strategy</label>
+                    <select id="strategy" name="strategy" required>
+                        <option value="">Select a strategy...</option>
+                        {% for s in strategies %}
+                        <option value="{{ s.name }}">{{ s.name }} (v{{ s.version }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="initial-capital">Initial Capital ($)</label>
+                    <input type="number" id="initial-capital" name="initial_capital" value="100000" min="1000" step="1000">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="start-date">Start Date</label>
+                    <input type="date" id="start-date" name="start_date" required>
+                </div>
+                <div class="form-group">
+                    <label for="end-date">End Date</label>
+                    <input type="date" id="end-date" name="end_date" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="position-size">Position Size (%)</label>
+                    <input type="number" id="position-size" name="position_size_pct" value="10" min="1" max="100" step="1">
+                </div>
+                <div class="form-group">
+                    <label for="max-positions">Max Positions</label>
+                    <input type="number" id="max-positions" name="max_positions" value="5" min="1" max="20">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="symbols">Symbols (comma-separated, leave empty for defaults)</label>
+                <input type="text" id="symbols" name="symbols" placeholder="{{ default_symbols | join(', ') }}">
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary" id="run-btn">Run Backtest</button>
+            </div>
+        </form>
+    </section>
+
+    <!-- Progress Section (hidden initially) -->
+    <section class="card" id="progress-section" style="display: none;">
+        <h2>Progress</h2>
+        <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+        </div>
+        <p id="progress-text">Initializing...</p>
+    </section>
+
+    <!-- Results Section (hidden initially) -->
+    <section id="results-section" style="display: none;">
+        <!-- Metrics -->
+        <div class="card">
+            <h2>Performance Metrics</h2>
+            <div class="stats-grid" id="metrics-grid">
+                <!-- Filled by JavaScript -->
+            </div>
+        </div>
+
+        <!-- Equity Curve Chart -->
+        <div class="card">
+            <h2>Equity Curve</h2>
+            <div id="equity-chart" style="height: 300px;"></div>
+        </div>
+
+        <!-- Trades Table -->
+        <div class="card">
+            <h2>Trades</h2>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Direction</th>
+                            <th>Entry</th>
+                            <th>Exit</th>
+                            <th>Entry Date</th>
+                            <th>Exit Date</th>
+                            <th>PnL</th>
+                            <th>PnL %</th>
+                        </tr>
+                    </thead>
+                    <tbody id="trades-tbody">
+                        <!-- Filled by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- Strategy Comparison Section -->
+    <section class="card">
+        <h2>Compare Strategies</h2>
+        <form id="compare-form" class="backtest-form">
+            <div class="form-group">
+                <label>Select Strategies to Compare</label>
+                <div class="strategy-checkboxes">
+                    {% for s in strategies %}
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="compare_strategies" value="{{ s.name }}">
+                        {{ s.name }}
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="compare-start-date">Start Date</label>
+                    <input type="date" id="compare-start-date" name="compare_start_date" required>
+                </div>
+                <div class="form-group">
+                    <label for="compare-end-date">End Date</label>
+                    <input type="date" id="compare-end-date" name="compare_end_date" required>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-secondary" id="compare-btn">Compare</button>
+            </div>
+        </form>
+
+        <!-- Comparison Results (hidden initially) -->
+        <div id="comparison-results" style="display: none; margin-top: 1rem;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Strategy</th>
+                        <th>Return %</th>
+                        <th>Win Rate</th>
+                        <th>Profit Factor</th>
+                        <th>Max DD %</th>
+                        <th>Sharpe</th>
+                        <th>Trades</th>
+                    </tr>
+                </thead>
+                <tbody id="comparison-tbody">
+                    <!-- Filled by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+
+<script src="/static/vendor/lightweight-charts.standalone.production.js"></script>
+<script>
+let equityChart = null;
+let lineSeries = null;
+
+// Initialize dates to last 90 days
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date();
+    const threeMonthsAgo = new Date(today);
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+
+    document.getElementById('start-date').value = threeMonthsAgo.toISOString().split('T')[0];
+    document.getElementById('end-date').value = today.toISOString().split('T')[0];
+    document.getElementById('compare-start-date').value = threeMonthsAgo.toISOString().split('T')[0];
+    document.getElementById('compare-end-date').value = today.toISOString().split('T')[0];
+});
+
+// Run backtest
+document.getElementById('backtest-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const strategy = document.getElementById('strategy').value;
+    const startDate = document.getElementById('start-date').value;
+    const endDate = document.getElementById('end-date').value;
+    const initialCapital = document.getElementById('initial-capital').value;
+    const symbolsInput = document.getElementById('symbols').value;
+
+    if (!strategy || !startDate || !endDate) {
+        alert('Please fill in all required fields');
+        return;
+    }
+
+    // Show progress section
+    document.getElementById('progress-section').style.display = 'block';
+    document.getElementById('results-section').style.display = 'none';
+    document.getElementById('run-btn').disabled = true;
+
+    // Build SSE URL
+    let url = `/api/backtest/stream?strategy=${encodeURIComponent(strategy)}&start_date=${startDate}&end_date=${endDate}&initial_capital=${initialCapital}`;
+    if (symbolsInput) {
+        url += `&symbols=${encodeURIComponent(symbolsInput)}`;
+    }
+
+    const eventSource = new EventSource(url);
+    let trades = [];
+
+    eventSource.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+
+        switch (data.type) {
+            case 'start':
+                document.getElementById('progress-text').textContent =
+                    `Running ${data.strategy} on ${data.symbols} symbols from ${data.start_date} to ${data.end_date}...`;
+                document.getElementById('progress-fill').style.width = '10%';
+                break;
+
+            case 'progress':
+                document.getElementById('progress-text').textContent = data.message;
+                document.getElementById('progress-fill').style.width = '30%';
+                break;
+
+            case 'trade':
+                trades.push(data.trade);
+                const pct = 30 + (data.index / data.total) * 50;
+                document.getElementById('progress-fill').style.width = pct + '%';
+                document.getElementById('progress-text').textContent =
+                    `Processing trade ${data.index} of ${data.total}...`;
+                break;
+
+            case 'complete':
+                document.getElementById('progress-fill').style.width = '100%';
+                document.getElementById('progress-text').textContent = 'Complete!';
+
+                // Display results
+                displayResults(data.metrics, data.equity_curve, trades);
+
+                // Hide progress after a moment
+                setTimeout(() => {
+                    document.getElementById('progress-section').style.display = 'none';
+                }, 1000);
+
+                document.getElementById('run-btn').disabled = false;
+                eventSource.close();
+                break;
+
+            case 'error':
+                document.getElementById('progress-text').textContent = 'Error: ' + data.message;
+                document.getElementById('run-btn').disabled = false;
+                eventSource.close();
+                break;
+        }
+    };
+
+    eventSource.onerror = function() {
+        document.getElementById('progress-text').textContent = 'Connection error';
+        document.getElementById('run-btn').disabled = false;
+        eventSource.close();
+    };
+});
+
+function displayResults(metrics, equityCurve, trades) {
+    document.getElementById('results-section').style.display = 'block';
+
+    // Display metrics
+    const metricsGrid = document.getElementById('metrics-grid');
+    if (metrics) {
+        const winRatePct = (parseFloat(metrics.win_rate) * 100).toFixed(1);
+        const returnPct = parseFloat(metrics.total_return_pct).toFixed(2);
+        const isPositive = parseFloat(metrics.total_return_pct) >= 0;
+
+        metricsGrid.innerHTML = `
+            <div class="stat-card ${isPositive ? 'positive' : 'negative'}">
+                <div class="stat-value">${returnPct}%</div>
+                <div class="stat-label">Total Return</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${metrics.total_trades}</div>
+                <div class="stat-label">Total Trades</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${winRatePct}%</div>
+                <div class="stat-label">Win Rate</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${metrics.profit_factor || 'N/A'}</div>
+                <div class="stat-label">Profit Factor</div>
+            </div>
+            <div class="stat-card negative">
+                <div class="stat-value">${parseFloat(metrics.max_drawdown_pct).toFixed(2)}%</div>
+                <div class="stat-label">Max Drawdown</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${metrics.sharpe_ratio ? parseFloat(metrics.sharpe_ratio).toFixed(2) : 'N/A'}</div>
+                <div class="stat-label">Sharpe Ratio</div>
+            </div>
+        `;
+    } else {
+        metricsGrid.innerHTML = '<p class="empty-state">No metrics available</p>';
+    }
+
+    // Display equity curve chart
+    const chartContainer = document.getElementById('equity-chart');
+    chartContainer.innerHTML = '';
+
+    if (equityCurve && equityCurve.length > 0) {
+        equityChart = LightweightCharts.createChart(chartContainer, {
+            width: chartContainer.clientWidth,
+            height: 300,
+            layout: {
+                background: { color: '#16213e' },
+                textColor: '#e8e8e8',
+            },
+            grid: {
+                vertLines: { color: '#2d2d44' },
+                horzLines: { color: '#2d2d44' },
+            },
+            rightPriceScale: {
+                borderColor: '#2d2d44',
+            },
+            timeScale: {
+                borderColor: '#2d2d44',
+                timeVisible: true,
+            },
+        });
+
+        lineSeries = equityChart.addLineSeries({
+            color: '#4f9cf9',
+            lineWidth: 2,
+        });
+
+        const chartData = equityCurve.map(point => ({
+            time: point.date,
+            value: parseFloat(point.equity),
+        }));
+
+        lineSeries.setData(chartData);
+        equityChart.timeScale().fitContent();
+    } else {
+        chartContainer.innerHTML = '<p class="empty-state">No equity curve data</p>';
+    }
+
+    // Display trades
+    const tradesBody = document.getElementById('trades-tbody');
+    tradesBody.innerHTML = '';
+
+    for (const trade of trades) {
+        const pnl = trade.pnl ? parseFloat(trade.pnl) : 0;
+        const pnlClass = pnl >= 0 ? 'positive' : 'negative';
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td class="symbol">${trade.symbol}</td>
+            <td>${trade.direction}</td>
+            <td>$${parseFloat(trade.entry_price).toFixed(2)}</td>
+            <td>${trade.exit_price ? '$' + parseFloat(trade.exit_price).toFixed(2) : '-'}</td>
+            <td class="timestamp">${trade.entry_date || '-'}</td>
+            <td class="timestamp">${trade.exit_date || '-'}</td>
+            <td class="${pnlClass}">${trade.pnl ? '$' + pnl.toFixed(2) : '-'}</td>
+            <td class="${pnlClass}">${trade.pnl_percent ? parseFloat(trade.pnl_percent).toFixed(2) + '%' : '-'}</td>
+        `;
+        tradesBody.appendChild(row);
+    }
+
+    if (trades.length === 0) {
+        tradesBody.innerHTML = '<tr><td colspan="8" class="empty-state">No trades executed</td></tr>';
+    }
+}
+
+// Compare strategies
+document.getElementById('compare-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const checkboxes = document.querySelectorAll('input[name="compare_strategies"]:checked');
+    const strategies = Array.from(checkboxes).map(cb => cb.value);
+
+    if (strategies.length < 2) {
+        alert('Please select at least 2 strategies to compare');
+        return;
+    }
+
+    const startDate = document.getElementById('compare-start-date').value;
+    const endDate = document.getElementById('compare-end-date').value;
+
+    document.getElementById('compare-btn').disabled = true;
+
+    try {
+        const response = await fetch('/api/backtest/compare', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                strategies: strategies,
+                start_date: startDate,
+                end_date: endDate,
+            }),
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to compare strategies');
+        }
+
+        const data = await response.json();
+        displayComparison(data);
+    } catch (error) {
+        alert('Error comparing strategies: ' + error.message);
+    } finally {
+        document.getElementById('compare-btn').disabled = false;
+    }
+});
+
+function displayComparison(data) {
+    document.getElementById('comparison-results').style.display = 'block';
+
+    const tbody = document.getElementById('comparison-tbody');
+    tbody.innerHTML = '';
+
+    for (const s of data.strategies) {
+        const returnClass = s.total_return_pct >= 0 ? 'positive' : 'negative';
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td class="symbol">${s.name}</td>
+            <td class="${returnClass}">${s.total_return_pct.toFixed(2)}%</td>
+            <td>${(s.win_rate * 100).toFixed(1)}%</td>
+            <td>${s.profit_factor.toFixed(2)}</td>
+            <td class="negative">${s.max_drawdown_pct.toFixed(2)}%</td>
+            <td>${s.sharpe_ratio.toFixed(2)}</td>
+            <td>${s.total_trades}</td>
+        `;
+        tbody.appendChild(row);
+    }
+}
+
+// Handle window resize for chart
+window.addEventListener('resize', function() {
+    if (equityChart) {
+        const container = document.getElementById('equity-chart');
+        equityChart.resize(container.clientWidth, 300);
+    }
+});
+</script>
+
+<style>
+.backtest-form .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-md);
+}
+
+.strategy-checkboxes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-sm);
+    background: var(--color-bg-tertiary);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+
+.checkbox-label:hover {
+    background: var(--color-border);
+}
+
+.table-container {
+    overflow-x: auto;
+}
+
+@media (max-width: 768px) {
+    .backtest-form .form-row {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}

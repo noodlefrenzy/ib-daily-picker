@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block title %}Journal - IB Daily Picker{% endblock %}
+
+{% block content %}
+<div class="journal-page">
+    <div class="page-header">
+        <h1>Trade Journal</h1>
+        <button class="btn btn-primary"
+                hx-get="/journal/open-trade-form"
+                hx-target="#modal-container"
+                hx-swap="innerHTML">
+            + Open Trade
+        </button>
+    </div>
+
+    <!-- Metrics Summary -->
+    <section class="card">
+        <h2>Performance Metrics</h2>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">{{ metrics.total_trades }}</div>
+                <div class="stat-label">Total Trades</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ "%.1f"|format(metrics.win_rate * 100) if metrics.win_rate else 0 }}%</div>
+                <div class="stat-label">Win Rate</div>
+            </div>
+            <div class="stat-card {% if metrics.total_pnl and metrics.total_pnl > 0 %}positive{% elif metrics.total_pnl and metrics.total_pnl < 0 %}negative{% endif %}">
+                <div class="stat-value">${{ "%.2f"|format(metrics.total_pnl) if metrics.total_pnl else "0.00" }}</div>
+                <div class="stat-label">Total P&L</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ "%.2f"|format(metrics.profit_factor) if metrics.profit_factor else '-' }}</div>
+                <div class="stat-label">Profit Factor</div>
+            </div>
+            <div class="stat-card positive">
+                <div class="stat-value">${{ "%.2f"|format(metrics.average_win) if metrics.average_win else "0.00" }}</div>
+                <div class="stat-label">Avg Win</div>
+            </div>
+            <div class="stat-card negative">
+                <div class="stat-value">${{ "%.2f"|format(metrics.average_loss) if metrics.average_loss else "0.00" }}</div>
+                <div class="stat-label">Avg Loss</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Open Trades -->
+    <section class="card">
+        <h2>Open Positions ({{ open_trades|length }})</h2>
+        {% if open_trades %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Symbol</th>
+                    <th>Direction</th>
+                    <th>Entry</th>
+                    <th>Size</th>
+                    <th>Stop Loss</th>
+                    <th>Target</th>
+                    <th>Opened</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for trade in open_trades %}
+                <tr>
+                    <td class="symbol">
+                        <a href="/stocks/{{ trade.symbol }}">{{ trade.symbol }}</a>
+                    </td>
+                    <td class="{% if trade.direction.value == 'long' %}positive{% else %}negative{% endif %}">
+                        {{ trade.direction.value|upper }}
+                    </td>
+                    <td>${{ "%.2f"|format(trade.entry_price) }}</td>
+                    <td>{{ trade.position_size }}</td>
+                    <td>{% if trade.stop_loss %}${{ "%.2f"|format(trade.stop_loss) }}{% else %}-{% endif %}</td>
+                    <td>{% if trade.take_profit %}${{ "%.2f"|format(trade.take_profit) }}{% else %}-{% endif %}</td>
+                    <td class="timestamp">{{ trade.entry_time.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>
+                        <button class="btn btn-small btn-primary"
+                                hx-get="/journal/trades/{{ trade.id }}/close-form"
+                                hx-target="#modal-container"
+                                hx-swap="innerHTML">
+                            Close
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="empty-state">No open positions.</p>
+        {% endif %}
+    </section>
+
+    <!-- Pending Recommendations -->
+    {% if pending_recommendations %}
+    <section class="card">
+        <h2>Pending Recommendations ({{ pending_recommendations|length }})</h2>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Symbol</th>
+                    <th>Signal</th>
+                    <th>Entry</th>
+                    <th>Stop</th>
+                    <th>Target</th>
+                    <th>Confidence</th>
+                    <th>Strategy</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rec in pending_recommendations %}
+                <tr>
+                    <td class="symbol">
+                        <a href="/stocks/{{ rec.symbol }}">{{ rec.symbol }}</a>
+                    </td>
+                    <td class="{% if rec.signal_type.value == 'buy' %}positive{% else %}negative{% endif %}">
+                        {{ rec.signal_type.value|upper }}
+                    </td>
+                    <td>{% if rec.entry_price %}${{ "%.2f"|format(rec.entry_price) }}{% else %}-{% endif %}</td>
+                    <td>{% if rec.stop_loss %}${{ "%.2f"|format(rec.stop_loss) }}{% else %}-{% endif %}</td>
+                    <td>{% if rec.take_profit %}${{ "%.2f"|format(rec.take_profit) }}{% else %}-{% endif %}</td>
+                    <td>{{ "%.0f"|format(rec.confidence * 100) }}%</td>
+                    <td>{{ rec.strategy_name }}</td>
+                    <td>
+                        <button class="btn btn-small btn-primary"
+                                hx-get="/journal/recommendations/{{ rec.id }}/execute-form"
+                                hx-target="#modal-container"
+                                hx-swap="innerHTML">
+                            Execute
+                        </button>
+                        <button class="btn btn-small btn-secondary"
+                                hx-post="/api/signals/{{ rec.id }}/skip"
+                                hx-target="closest tr"
+                                hx-swap="outerHTML">
+                            Skip
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+    {% endif %}
+
+    <!-- Closed Trades -->
+    <section class="card">
+        <h2>Trade History ({{ closed_trades|length }})</h2>
+        {% if closed_trades %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Symbol</th>
+                    <th>Direction</th>
+                    <th>Entry</th>
+                    <th>Exit</th>
+                    <th>Size</th>
+                    <th>P&L</th>
+                    <th>P&L %</th>
+                    <th>R-Multiple</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for trade in closed_trades %}
+                <tr>
+                    <td class="symbol">
+                        <a href="/stocks/{{ trade.symbol }}">{{ trade.symbol }}</a>
+                    </td>
+                    <td class="{% if trade.direction.value == 'long' %}positive{% else %}negative{% endif %}">
+                        {{ trade.direction.value|upper }}
+                    </td>
+                    <td>${{ "%.2f"|format(trade.entry_price) }}</td>
+                    <td>${{ "%.2f"|format(trade.exit_price) if trade.exit_price else '-' }}</td>
+                    <td>{{ trade.position_size }}</td>
+                    <td class="{% if trade.pnl and trade.pnl > 0 %}positive{% elif trade.pnl and trade.pnl < 0 %}negative{% endif %}">
+                        ${{ "%.2f"|format(trade.pnl) if trade.pnl else '-' }}
+                    </td>
+                    <td class="{% if trade.pnl_percent and trade.pnl_percent > 0 %}positive{% elif trade.pnl_percent and trade.pnl_percent < 0 %}negative{% endif %}">
+                        {{ "%.2f"|format(trade.pnl_percent) if trade.pnl_percent else '-' }}%
+                    </td>
+                    <td>{{ "%.2f"|format(trade.r_multiple) if trade.r_multiple else '-' }}R</td>
+                    <td class="timestamp">{{ trade.entry_time.strftime('%Y-%m-%d') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="empty-state">No closed trades.</p>
+        {% endif %}
+    </section>
+</div>
+
+<!-- Modal container for forms -->
+<div id="modal-container"></div>
+{% endblock %}

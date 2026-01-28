@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from contextlib import nullcontext
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated, Any, Optional
 
 import typer
 from rich.console import Console
@@ -2275,6 +2275,58 @@ def scan(
 
         if excluded_earnings:
             console.print(f"\n[dim]Excluded (earnings soon): {', '.join([e[0] for e in excluded_earnings])}[/dim]")
+
+
+# =============================================================================
+# Serve Command (Web Application)
+# =============================================================================
+@app.command("serve")
+def serve(
+    host: Annotated[
+        str,
+        typer.Option("--host", "-h", help="Host to bind"),
+    ] = "127.0.0.1",
+    port: Annotated[
+        int,
+        typer.Option("--port", "-p", help="Port to bind"),
+    ] = 8000,
+    reload: Annotated[
+        bool,
+        typer.Option("--reload", help="Auto-reload for development"),
+    ] = False,
+) -> None:
+    """Start the web application server.
+
+    Launches a web UI for the IB Daily Picker at http://localhost:8000
+
+    Examples:
+        ib-picker serve
+        ib-picker serve --port 8080
+        ib-picker serve --reload  # for development
+    """
+    try:
+        import uvicorn
+    except ImportError:
+        err_console.print("[red]uvicorn not installed. Install with:[/red]")
+        err_console.print("  pip install 'ib-daily-picker[dev]'")
+        raise typer.Exit(1)
+
+    from ib_daily_picker.web import create_app
+
+    console.print(f"[cyan]Starting web server at http://{host}:{port}[/cyan]")
+
+    # Ensure database is initialized
+    from ib_daily_picker.store.database import get_db_manager
+    get_db_manager()
+
+    app_instance = create_app()
+    uvicorn.run(
+        app_instance,
+        host=host,
+        port=port,
+        reload=reload,
+        log_level="info",
+    )
 
 
 if __name__ == "__main__":

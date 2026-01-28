@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Strategies - IB Daily Picker{% endblock %}
+
+{% block content %}
+<div class="strategies-page">
+    <h1>Strategies ({{ strategies|length }})</h1>
+
+    <div class="strategy-grid">
+        {% for strat in strategies %}
+        <div class="strategy-card">
+            <h3>{{ strat.name }}</h3>
+            <span class="version">v{{ strat.version }}</span>
+            <p class="description">{{ strat.description or 'No description' }}</p>
+            <div class="strategy-actions">
+                <a href="/strategies/{{ strat.name }}" class="btn btn-small btn-secondary">View Details</a>
+                <a href="/analysis?strategy={{ strat.name }}" class="btn btn-small btn-primary">Run Analysis</a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if not strategies %}
+    <div class="empty-state">
+        <p>No strategies found.</p>
+        <p>Add strategy YAML files to your strategies directory, or use the CLI to create one:</p>
+        <code>ib-picker strategy create my-strategy</code>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

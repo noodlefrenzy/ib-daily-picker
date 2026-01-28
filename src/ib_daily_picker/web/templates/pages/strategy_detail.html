@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block title %}{{ strategy.name }} - IB Daily Picker{% endblock %}
+
+{% block content %}
+<div class="strategy-detail-page">
+    <div class="page-header">
+        <div>
+            <h1>{{ strategy.name }}</h1>
+            <span class="version">v{{ strategy.version }}</span>
+        </div>
+        <a href="/analysis?strategy={{ strategy.name }}" class="btn btn-primary">Run Analysis</a>
+    </div>
+
+    {% if strategy.strategy and strategy.strategy.description %}
+    <section class="card">
+        <h2>Description</h2>
+        <p>{{ strategy.strategy.description }}</p>
+    </section>
+    {% endif %}
+
+    <!-- Indicators -->
+    <section class="card">
+        <h2>Indicators</h2>
+        {% if strategy.indicators %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Period</th>
+                    <th>Source</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ind in strategy.indicators %}
+                <tr>
+                    <td class="symbol">{{ ind.name }}</td>
+                    <td>{{ ind.type.value }}</td>
+                    <td>{{ ind.period or '-' }}</td>
+                    <td>{{ ind.source or 'close' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="empty-state">No indicators defined.</p>
+        {% endif %}
+    </section>
+
+    <!-- Entry Conditions -->
+    <section class="card">
+        <h2>Entry Conditions</h2>
+        {% if strategy.entry and strategy.entry.conditions %}
+        <ul class="condition-list">
+            {% for cond in strategy.entry.conditions %}
+            <li>
+                {% if cond.indicator %}
+                    <code>{{ cond.indicator }}</code>
+                    {{ cond.operator }}
+                    <code>{{ cond.value }}</code>
+                {% else %}
+                    {{ cond }}
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+        {% if strategy.entry.logic %}
+        <p><strong>Logic:</strong> {{ strategy.entry.logic }}</p>
+        {% endif %}
+        {% else %}
+        <p class="empty-state">No entry conditions defined.</p>
+        {% endif %}
+    </section>
+
+    <!-- Exit Configuration -->
+    <section class="card">
+        <h2>Exit Configuration</h2>
+        {% if strategy.exit %}
+            {% if strategy.exit.targets %}
+            <ul class="condition-list">
+                {% for target in strategy.exit.targets %}
+                <li>
+                    <strong>{{ target.type.value|title }}:</strong>
+                    {{ target.value }}{% if target.unit %}{{ target.unit }}{% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+            {% if strategy.exit.conditions %}
+            <h3>Exit Conditions</h3>
+            <ul class="condition-list">
+                {% for cond in strategy.exit.conditions %}
+                <li>{{ cond }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        {% else %}
+        <p class="empty-state">No exit configuration defined.</p>
+        {% endif %}
+    </section>
+
+    <!-- Risk Configuration -->
+    {% if strategy.risk %}
+    <section class="card">
+        <h2>Risk Configuration</h2>
+        <div class="stats-grid">
+            {% if strategy.risk.position_size_pct %}
+            <div class="stat-card">
+                <div class="stat-value">{{ strategy.risk.position_size_pct }}%</div>
+                <div class="stat-label">Position Size</div>
+            </div>
+            {% endif %}
+            {% if strategy.risk.max_loss_pct %}
+            <div class="stat-card">
+                <div class="stat-value">{{ strategy.risk.max_loss_pct }}%</div>
+                <div class="stat-label">Max Loss</div>
+            </div>
+            {% endif %}
+            {% if strategy.risk.profile %}
+            <div class="stat-card">
+                <div class="stat-value">{{ strategy.risk.profile.value|title }}</div>
+                <div class="stat-label">Risk Profile</div>
+            </div>
+            {% endif %}
+        </div>
+    </section>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,31 @@
+<div class="modal-overlay" id="close-form-modal" onclick="if(event.target === this) this.remove()">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Close Trade: {{ trade.symbol }}</h3>
+            <button class="modal-close" onclick="document.getElementById('close-form-modal').remove()">&times;</button>
+        </div>
+        <div class="trade-summary">
+            <p><strong>Entry:</strong> ${{ "%.2f"|format(trade.entry_price) }} |
+               <strong>Size:</strong> {{ trade.position_size }} |
+               <strong>Direction:</strong> {{ trade.direction.value|upper }}</p>
+        </div>
+        <form hx-post="/api/trades/{{ trade.id }}/close"
+              hx-target="body"
+              hx-headers='{"Content-Type": "application/json"}'
+              hx-ext="json-enc">
+            <div class="form-group">
+                <label for="exit_price">Exit Price</label>
+                <input type="number" id="exit_price" name="exit_price" step="0.01" required>
+            </div>
+            <div class="form-group">
+                <label for="notes">Closing Notes</label>
+                <textarea id="notes" name="notes" rows="3"></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary"
+                        onclick="document.getElementById('close-form-modal').remove()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Close Trade</button>
+            </div>
+        </form>
+    </div>
+</div>

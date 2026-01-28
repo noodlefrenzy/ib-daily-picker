@@ -78,9 +78,10 @@ ib-picker
 ├── backtest    # Backtesting
 │   ├── run
 │   └── compare
-└── db          # Database operations
-    ├── status
-    └── export
+├── db          # Database operations
+│   ├── status
+│   └── export
+└── serve       # Start web server (--host, --port, --reload)
 ```
 
 ## Alternatives Considered

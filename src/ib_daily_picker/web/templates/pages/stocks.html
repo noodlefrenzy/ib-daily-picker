@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Stocks - IB Daily Picker{% endblock %}
+
+{% block content %}
+<div class="stocks-page">
+    <h1>Stocks ({{ total }})</h1>
+
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Symbol</th>
+                <th>Name</th>
+                <th>Sector</th>
+                <th>Last Close</th>
+                <th>Change</th>
+                <th>Date</th>
+                <th>Data Points</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for stock in stocks %}
+            <tr>
+                <td class="symbol">
+                    <a href="/stocks/{{ stock.symbol }}">{{ stock.symbol }}</a>
+                </td>
+                <td>{{ stock.name or '-' }}</td>
+                <td>{{ stock.sector or '-' }}</td>
+                <td>${{ "%.2f"|format(stock.latest_close) if stock.latest_close else '-' }}</td>
+                <td class="{% if stock.change_pct and stock.change_pct > 0 %}positive{% elif stock.change_pct and stock.change_pct < 0 %}negative{% endif %}">
+                    {% if stock.change_pct %}
+                    {{ "%.2f"|format(stock.change_pct) }}%
+                    {% else %}
+                    -
+                    {% endif %}
+                </td>
+                <td class="timestamp">{{ stock.latest_date if stock.latest_date else '-' }}</td>
+                <td>{{ stock.data_points }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

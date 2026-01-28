@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}IB Daily Picker{% endblock %}</title>
+
+    <!-- HTMX -->
+    <script src="/static/vendor/htmx.min.js"></script>
+
+    <!-- TradingView Lightweight Charts (loaded only when needed) -->
+    {% block head_scripts %}{% endblock %}
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="/static/css/main.css">
+    {% block head_styles %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-brand">
+            <a href="/" class="logo">IB Daily Picker</a>
+        </div>
+        <div class="navbar-menu">
+            <a href="/" class="nav-link {% if request.url.path == '/' %}active{% endif %}">Dashboard</a>
+            <a href="/stocks" class="nav-link {% if '/stocks' in request.url.path %}active{% endif %}">Stocks</a>
+            <a href="/journal" class="nav-link {% if '/journal' in request.url.path %}active{% endif %}">Journal</a>
+            <a href="/analysis" class="nav-link {% if '/analysis' in request.url.path %}active{% endif %}">Analysis</a>
+            <a href="/backtest" class="nav-link {% if '/backtest' in request.url.path %}active{% endif %}">Backtest</a>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        <p>IB Daily Picker v0.1.0</p>
+    </footer>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

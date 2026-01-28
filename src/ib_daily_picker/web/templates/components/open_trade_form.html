@@ -1,0 +1,54 @@
+<div class="modal-overlay" id="trade-form-modal" onclick="if(event.target === this) this.remove()">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Open Trade</h3>
+            <button class="modal-close" onclick="document.getElementById('trade-form-modal').remove()">&times;</button>
+        </div>
+        <form hx-post="/api/trades"
+              hx-target="body"
+              hx-headers='{"Content-Type": "application/json"}'
+              hx-ext="json-enc">
+            <div class="form-group">
+                <label for="symbol">Symbol</label>
+                <input type="text" id="symbol" name="symbol" value="{{ symbol or '' }}" required
+                       pattern="[A-Za-z]+" title="Stock ticker symbol" style="text-transform: uppercase;">
+            </div>
+            <div class="form-group">
+                <label for="direction">Direction</label>
+                <select id="direction" name="direction" required>
+                    <option value="long">Long</option>
+                    <option value="short">Short</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="entry_price">Entry Price</label>
+                    <input type="number" id="entry_price" name="entry_price" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label for="position_size">Position Size</label>
+                    <input type="number" id="position_size" name="position_size" step="0.01" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="stop_loss">Stop Loss</label>
+                    <input type="number" id="stop_loss" name="stop_loss" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label for="take_profit">Take Profit</label>
+                    <input type="number" id="take_profit" name="take_profit" step="0.01">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="notes">Notes</label>
+                <textarea id="notes" name="notes" rows="3"></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary"
+                        onclick="document.getElementById('trade-form-modal').remove()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Open Trade</button>
+            </div>
+        </form>
+    </div>
+</div>

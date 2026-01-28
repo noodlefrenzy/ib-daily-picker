@@ -268,7 +268,10 @@ ib-picker serve --reload
 |------|-----|-------------|
 | Dashboard | `/` | Overview with recent signals, watchlist, market status |
 | Stocks | `/stocks` | Browse stocks with prices and indicators |
-| Stock Detail | `/stocks/{symbol}` | Detailed view with charts and flow data |
+| Stock Detail | `/stocks/{symbol}` | Detailed view with candlestick chart, volume, indicators, flow alerts |
+| Compare | `/charts/compare` | Multi-symbol normalized price comparison with Plotly.js |
+| Portfolio | `/charts/portfolio` | Portfolio analytics: equity curve, returns distribution, drawdown |
+| Correlations | `/charts/correlations` | Correlation heatmap between stocks |
 | Journal | `/journal` | Trade journal with open/close/execute forms |
 | Analysis | `/analysis` | Run strategies and view signals |
 | Backtest | `/backtest` | Configure and run backtests |
@@ -292,6 +295,15 @@ curl http://localhost:8000/api/signals
 curl -X POST http://localhost:8000/api/analysis/run \
   -H "Content-Type: application/json" \
   -d '{"strategy": "example_rsi_flow", "symbols": ["AAPL", "MSFT"]}'
+
+# Compare stocks (normalized returns)
+curl "http://localhost:8000/api/charts/compare?symbols=AAPL,MSFT,NVDA&range=3M"
+
+# Get indicators for a stock
+curl "http://localhost:8000/api/charts/indicators/AAPL?indicators=sma_50,sma_200,rsi"
+
+# Get correlation matrix
+curl "http://localhost:8000/api/charts/correlation?symbols=AAPL,MSFT,GOOGL,NVDA&days=90"
 ```
 
 ### API Documentation

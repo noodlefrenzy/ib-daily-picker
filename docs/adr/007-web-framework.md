@@ -84,18 +84,21 @@ src/ib_daily_picker/web/
 │   │   ├── watchlist.py # CRUD /api/watchlist/*
 │   │   ├── strategies.py# GET /api/strategies
 │   │   ├── analysis.py  # POST /api/analysis/run
-│   │   └── backtest.py  # POST /api/backtest/run
+│   │   ├── backtest.py  # POST /api/backtest/run
+│   │   └── charts.py    # GET /api/charts/* (comparison, indicators, correlation)
 │   └── pages/           # Server-rendered HTML pages
 │       ├── dashboard.py # GET / (home dashboard)
 │       ├── stocks.py    # GET /stocks, /stocks/{symbol}
 │       ├── journal.py   # GET /journal
 │       ├── analysis.py  # GET /analysis
-│       └── backtest.py  # GET /backtest
+│       ├── backtest.py  # GET /backtest
+│       └── charts.py    # GET /charts/* (compare, portfolio, correlations)
 ├── templates/           # Jinja2 templates
 │   ├── base.html        # Base layout
 │   ├── pages/           # Page templates
 │   └── components/      # Reusable components
 └── static/              # CSS, JS, images
+    └── vendor/          # Third-party JS (Plotly.js)
 ```
 
 ## API Endpoints
@@ -115,6 +118,10 @@ src/ib_daily_picker/web/
 | GET | `/api/strategies` | List strategies |
 | POST | `/api/analysis/run` | Run analysis |
 | POST | `/api/backtest/run` | Run backtest |
+| GET | `/api/charts/compare` | Normalized price comparison |
+| GET | `/api/charts/indicators/{symbol}` | OHLCV with computed indicators |
+| GET | `/api/charts/correlation` | Correlation matrix for symbols |
+| GET | `/api/charts/sector-etfs` | List sector ETF mappings |
 
 ## Alternatives Considered
 

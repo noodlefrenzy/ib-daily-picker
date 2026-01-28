@@ -229,9 +229,11 @@ tests/
 # Run all verification layers before committing
 mypy src/                 # Type checking
 ruff check .              # Linting
-ruff format --check .     # Format verification
+ruff format .             # Format code (auto-fix)
 pytest                    # Tests
 ```
+
+**Note on formatting:** If `ruff format .` modifies files you didn't otherwise change, commit those formatting changes separately (e.g., `style: format with ruff`) to keep feature commits focused and git blame useful.
 
 ---
 

@@ -18,10 +18,17 @@ Be respectful and constructive in all interactions. We're here to build somethin
    ```bash
    pip install -e ".[dev]"
    ```
-4. Verify your setup:
+4. Install pre-commit hooks:
+   ```bash
+   pip install pre-commit
+   pre-commit install
+   ```
+5. Verify your setup:
    ```bash
    pytest
    ```
+
+The pre-commit hooks will automatically run `ruff` (linting + formatting) on every commit, catching issues before they reach CI.
 
 ## Development Workflow
 

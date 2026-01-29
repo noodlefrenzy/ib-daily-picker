@@ -522,14 +522,14 @@ The dual-database architecture optimizes for:
 
 ## License
 
-MIT
+[MIT](LICENSE)
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Make changes with tests
-4. Run the test suite: `pytest`
-5. Submit a pull request
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines. Quick start:
 
-See [CLAUDE.md](CLAUDE.md) for development guidelines and conventions.
+1. Fork the repository
+2. Install dev dependencies: `pip install -e ".[dev]"`
+3. Install pre-commit hooks: `pre-commit install`
+4. Create a feature branch and make changes with tests
+5. Submit a pull request

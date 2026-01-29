@@ -19,10 +19,6 @@ EDGE CASES:
 - Missing fields
 """
 
-from typing import Type
-from unittest.mock import MagicMock
-
-import pytest
 from pydantic import BaseModel
 
 from ib_daily_picker.analysis.strategy_schema import (
@@ -51,7 +47,7 @@ class MockLLMClient(LLMClient):
     def complete(
         self,
         prompt: str,
-        response_model: Type[BaseModel],
+        response_model: type[BaseModel],
         system_prompt: str | None = None,
         temperature: float = 0.7,
         max_tokens: int = 4096,

@@ -20,7 +20,6 @@ EDGE CASES:
 - Cancel open trade
 """
 
-from datetime import datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -30,7 +29,6 @@ from ib_daily_picker.models import (
     Recommendation,
     RecommendationStatus,
     SignalType,
-    Trade,
     TradeDirection,
     TradeStatus,
 )
@@ -249,7 +247,7 @@ class TestJournalManagerQueries:
         manager = JournalManager(test_db)
 
         # Create and close trades
-        for i in range(3):
+        for _ in range(3):
             trade = manager.open_trade(
                 symbol="AAPL",
                 direction=TradeDirection.LONG,

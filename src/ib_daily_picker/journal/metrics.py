@@ -13,12 +13,12 @@ ARCHITECTURE NOTES:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
+from datetime import date
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ib_daily_picker.models import Trade, TradeStatus
+    from ib_daily_picker.models import Trade
 
 
 @dataclass
@@ -107,7 +107,7 @@ class ExtendedMetrics:
     by_tag: dict[str, dict] = field(default_factory=dict)
 
 
-def calculate_extended_metrics(trades: list["Trade"]) -> ExtendedMetrics:
+def calculate_extended_metrics(trades: list[Trade]) -> ExtendedMetrics:
     """Calculate extended metrics from a list of trades.
 
     Args:
@@ -190,7 +190,7 @@ def calculate_extended_metrics(trades: list["Trade"]) -> ExtendedMetrics:
     return metrics
 
 
-def _calculate_streaks(trades: list["Trade"]) -> StreakInfo:
+def _calculate_streaks(trades: list[Trade]) -> StreakInfo:
     """Calculate winning/losing streak information."""
     if not trades:
         return StreakInfo()
@@ -229,7 +229,7 @@ def _calculate_streaks(trades: list["Trade"]) -> StreakInfo:
     return info
 
 
-def _calculate_drawdown(trades: list["Trade"]) -> DrawdownInfo:
+def _calculate_drawdown(trades: list[Trade]) -> DrawdownInfo:
     """Calculate drawdown metrics."""
     if not trades:
         return DrawdownInfo()
@@ -268,7 +268,7 @@ def _calculate_drawdown(trades: list["Trade"]) -> DrawdownInfo:
     return info
 
 
-def _calculate_time_analysis(trades: list["Trade"]) -> TimeAnalysis:
+def _calculate_time_analysis(trades: list[Trade]) -> TimeAnalysis:
     """Calculate time-based analysis."""
     if not trades:
         return TimeAnalysis()
@@ -298,12 +298,12 @@ def _calculate_time_analysis(trades: list["Trade"]) -> TimeAnalysis:
     return analysis
 
 
-def _calculate_by_strategy(trades: list["Trade"]) -> list[StrategyAnalysis]:
+def _calculate_by_strategy(trades: list[Trade]) -> list[StrategyAnalysis]:
     """Calculate per-strategy breakdown."""
     from ib_daily_picker.models import TradeStatus
 
     # Group by strategy (via recommendation relationship)
-    strategy_trades: dict[str, list["Trade"]] = {}
+    strategy_trades: dict[str, list[Trade]] = {}
 
     for trade in trades:
         # Use "Unknown" for trades without recommendation
@@ -340,7 +340,7 @@ def _calculate_by_strategy(trades: list["Trade"]) -> list[StrategyAnalysis]:
     return results
 
 
-def _calculate_by_symbol(trades: list["Trade"]) -> dict[str, dict]:
+def _calculate_by_symbol(trades: list[Trade]) -> dict[str, dict]:
     """Calculate per-symbol breakdown."""
     symbol_stats: dict[str, dict] = {}
 
@@ -370,7 +370,7 @@ def _calculate_by_symbol(trades: list["Trade"]) -> dict[str, dict]:
     return symbol_stats
 
 
-def _calculate_by_tag(trades: list["Trade"]) -> dict[str, dict]:
+def _calculate_by_tag(trades: list[Trade]) -> dict[str, dict]:
     """Calculate per-tag breakdown."""
     tag_stats: dict[str, dict] = {}
 
@@ -401,7 +401,7 @@ def _calculate_by_tag(trades: list["Trade"]) -> dict[str, dict]:
 
 
 def filter_trades(
-    trades: list["Trade"],
+    trades: list[Trade],
     *,
     start_date: date | None = None,
     end_date: date | None = None,
@@ -409,7 +409,7 @@ def filter_trades(
     tags: list[str] | None = None,
     min_pnl: Decimal | None = None,
     max_pnl: Decimal | None = None,
-) -> list["Trade"]:
+) -> list[Trade]:
     """Filter trades by various criteria.
 
     Args:

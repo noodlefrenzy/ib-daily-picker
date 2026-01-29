@@ -15,7 +15,6 @@ from __future__ import annotations
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -39,26 +38,26 @@ class Trade(BaseModel):
     """Executed trade for journaling."""
 
     id: str = Field(..., description="Unique trade identifier")
-    recommendation_id: Optional[str] = Field(None, description="Source recommendation ID")
+    recommendation_id: str | None = Field(None, description="Source recommendation ID")
     symbol: str = Field(..., description="Stock ticker symbol")
     direction: TradeDirection = Field(..., description="Long or short")
     entry_price: Decimal = Field(..., description="Entry price")
     entry_time: datetime = Field(..., description="Entry timestamp")
-    exit_price: Optional[Decimal] = Field(None, description="Exit price")
-    exit_time: Optional[datetime] = Field(None, description="Exit timestamp")
+    exit_price: Decimal | None = Field(None, description="Exit price")
+    exit_time: datetime | None = Field(None, description="Exit timestamp")
     position_size: Decimal = Field(..., description="Number of shares")
-    stop_loss: Optional[Decimal] = Field(None, description="Stop loss price")
-    take_profit: Optional[Decimal] = Field(None, description="Take profit target")
-    pnl: Optional[Decimal] = Field(None, description="Profit/loss in dollars")
-    pnl_percent: Optional[Decimal] = Field(None, description="Profit/loss percentage")
-    r_multiple: Optional[Decimal] = Field(None, description="R-multiple (PnL / risk)")
-    mfe: Optional[Decimal] = Field(
+    stop_loss: Decimal | None = Field(None, description="Stop loss price")
+    take_profit: Decimal | None = Field(None, description="Take profit target")
+    pnl: Decimal | None = Field(None, description="Profit/loss in dollars")
+    pnl_percent: Decimal | None = Field(None, description="Profit/loss percentage")
+    r_multiple: Decimal | None = Field(None, description="R-multiple (PnL / risk)")
+    mfe: Decimal | None = Field(
         None, description="Maximum favorable excursion (best unrealized price)"
     )
-    mae: Optional[Decimal] = Field(
+    mae: Decimal | None = Field(
         None, description="Maximum adverse excursion (worst unrealized price)"
     )
-    notes: Optional[str] = Field(None, description="Trade notes")
+    notes: str | None = Field(None, description="Trade notes")
     tags: list[str] = Field(default_factory=list, description="Tags for categorization")
     status: TradeStatus = Field(default=TradeStatus.OPEN, description="Trade status")
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -93,7 +92,7 @@ class Trade(BaseModel):
         return Decimal(str(v))
 
     @model_validator(mode="after")
-    def calculate_metrics(self) -> "Trade":
+    def calculate_metrics(self) -> Trade:
         """Calculate PnL metrics if trade is closed."""
         if self.exit_price is not None and self.status == TradeStatus.CLOSED:
             # Calculate PnL
@@ -146,7 +145,7 @@ class Trade(BaseModel):
         exit_price: Decimal,
         exit_time: datetime | None = None,
         notes: str | None = None,
-    ) -> "Trade":
+    ) -> Trade:
         """Close the trade with given exit price."""
         self.exit_price = exit_price
         self.exit_time = exit_time or datetime.utcnow()
@@ -188,13 +187,13 @@ class TradeMetrics(BaseModel):
     win_rate: Decimal = Field(default=Decimal("0"))
     avg_winner: Decimal = Field(default=Decimal("0"))
     avg_loser: Decimal = Field(default=Decimal("0"))
-    profit_factor: Optional[Decimal] = Field(None)
-    avg_r_multiple: Optional[Decimal] = Field(None)
+    profit_factor: Decimal | None = Field(None)
+    avg_r_multiple: Decimal | None = Field(None)
     largest_winner: Decimal = Field(default=Decimal("0"))
     largest_loser: Decimal = Field(default=Decimal("0"))
 
     @classmethod
-    def from_trades(cls, trades: list[Trade]) -> "TradeMetrics":
+    def from_trades(cls, trades: list[Trade]) -> TradeMetrics:
         """Calculate metrics from a list of closed trades."""
         closed = [t for t in trades if t.status == TradeStatus.CLOSED and t.pnl is not None]
 

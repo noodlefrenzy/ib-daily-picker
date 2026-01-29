@@ -19,10 +19,8 @@ EDGE CASES:
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from decimal import Decimal
-
-import pytest
 
 from ib_daily_picker.models import (
     OHLCV,

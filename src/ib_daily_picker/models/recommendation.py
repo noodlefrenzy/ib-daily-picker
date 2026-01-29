@@ -15,7 +15,6 @@ from __future__ import annotations
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -45,19 +44,19 @@ class Recommendation(BaseModel):
     symbol: str = Field(..., description="Stock ticker symbol")
     strategy_name: str = Field(..., description="Strategy that generated this")
     signal_type: SignalType = Field(..., description="Buy/sell/hold signal")
-    entry_price: Optional[Decimal] = Field(None, description="Suggested entry price")
-    stop_loss: Optional[Decimal] = Field(None, description="Stop loss price")
-    take_profit: Optional[Decimal] = Field(None, description="Take profit target")
-    position_size: Optional[Decimal] = Field(None, description="Suggested position size")
+    entry_price: Decimal | None = Field(None, description="Suggested entry price")
+    stop_loss: Decimal | None = Field(None, description="Stop loss price")
+    take_profit: Decimal | None = Field(None, description="Take profit target")
+    position_size: Decimal | None = Field(None, description="Suggested position size")
     confidence: Decimal = Field(
         default=Decimal("0.5"),
         description="Confidence score 0-1",
         ge=Decimal("0"),
         le=Decimal("1"),
     )
-    reasoning: Optional[str] = Field(None, description="Why this signal was generated")
+    reasoning: str | None = Field(None, description="Why this signal was generated")
     generated_at: datetime = Field(default_factory=datetime.utcnow, description="When generated")
-    expires_at: Optional[datetime] = Field(None, description="When signal expires")
+    expires_at: datetime | None = Field(None, description="When signal expires")
     status: RecommendationStatus = Field(
         default=RecommendationStatus.PENDING, description="Current status"
     )
@@ -131,7 +130,7 @@ class RecommendationBatch(BaseModel):
 
     recommendations: list[Recommendation] = Field(default_factory=list)
     generated_at: datetime = Field(default_factory=datetime.utcnow)
-    strategy_name: Optional[str] = Field(None, description="Source strategy")
+    strategy_name: str | None = Field(None, description="Source strategy")
 
     @property
     def count(self) -> int:
@@ -143,7 +142,7 @@ class RecommendationBatch(BaseModel):
         """Number of actionable recommendations."""
         return sum(1 for r in self.recommendations if r.is_actionable)
 
-    def filter_by_signal(self, signal_type: SignalType) -> "RecommendationBatch":
+    def filter_by_signal(self, signal_type: SignalType) -> RecommendationBatch:
         """Filter by signal type."""
         return RecommendationBatch(
             recommendations=[r for r in self.recommendations if r.signal_type == signal_type],
@@ -151,7 +150,7 @@ class RecommendationBatch(BaseModel):
             strategy_name=self.strategy_name,
         )
 
-    def filter_actionable(self) -> "RecommendationBatch":
+    def filter_actionable(self) -> RecommendationBatch:
         """Filter to only actionable recommendations."""
         return RecommendationBatch(
             recommendations=[r for r in self.recommendations if r.is_actionable],
@@ -159,7 +158,7 @@ class RecommendationBatch(BaseModel):
             strategy_name=self.strategy_name,
         )
 
-    def sort_by_confidence(self, descending: bool = True) -> "RecommendationBatch":
+    def sort_by_confidence(self, descending: bool = True) -> RecommendationBatch:
         """Sort by confidence score."""
         sorted_recs = sorted(self.recommendations, key=lambda r: r.confidence, reverse=descending)
         return RecommendationBatch(

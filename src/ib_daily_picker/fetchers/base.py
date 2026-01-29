@@ -13,13 +13,13 @@ ARCHITECTURE NOTES:
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date, datetime
-from decimal import Decimal
 from enum import Enum
-from typing import Callable, Generic, TypeVar
+from typing import Generic, TypeVar
 
-from ib_daily_picker.models import OHLCV, OHLCVBatch, StockMetadata
+from ib_daily_picker.models import OHLCV, StockMetadata
 
 
 class FetchStatus(str, Enum):

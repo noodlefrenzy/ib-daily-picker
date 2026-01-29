@@ -16,7 +16,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from decimal import Decimal
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from ib_daily_picker.analysis.evaluator import StrategyEvaluator
@@ -77,7 +77,7 @@ class BacktestResult:
 class BacktestRunner:
     """Runs backtests on historical data."""
 
-    def __init__(self, db: "DatabaseManager") -> None:
+    def __init__(self, db: DatabaseManager) -> None:
         """Initialize with database manager.
 
         Args:
@@ -107,7 +107,7 @@ class BacktestRunner:
 
     def run(
         self,
-        strategy: "Strategy",
+        strategy: Strategy,
         symbols: list[str],
         config: BacktestConfig,
     ) -> BacktestResult:
@@ -323,7 +323,6 @@ class BacktestRunner:
         # Update MFE/MAE
         high = today_ohlcv.high_price
         low = today_ohlcv.low_price
-        close = today_ohlcv.close_price
 
         if position.direction == TradeDirection.LONG:
             if position.mfe is None or high > position.mfe:
@@ -430,9 +429,9 @@ class BacktestRunner:
 
 
 def run_walk_forward(
-    strategy: "Strategy",
+    strategy: Strategy,
     symbols: list[str],
-    db: "DatabaseManager",
+    db: DatabaseManager,
     start_date: date,
     end_date: date,
     in_sample_days: int = 252,  # ~1 year

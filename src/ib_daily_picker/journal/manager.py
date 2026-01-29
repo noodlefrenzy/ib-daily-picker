@@ -48,7 +48,7 @@ logger = logging.getLogger(__name__)
 class JournalManager:
     """Manages trade journal operations."""
 
-    def __init__(self, db: "DatabaseManager") -> None:
+    def __init__(self, db: DatabaseManager) -> None:
         """Initialize with database manager.
 
         Args:
@@ -59,7 +59,7 @@ class JournalManager:
         self._rec_repo: RecommendationRepository | None = None
 
     @property
-    def trade_repo(self) -> "TradeRepository":
+    def trade_repo(self) -> TradeRepository:
         """Lazy-load trade repository."""
         if self._trade_repo is None:
             from ib_daily_picker.store.repositories import TradeRepository
@@ -68,7 +68,7 @@ class JournalManager:
         return self._trade_repo
 
     @property
-    def rec_repo(self) -> "RecommendationRepository":
+    def rec_repo(self) -> RecommendationRepository:
         """Lazy-load recommendation repository."""
         if self._rec_repo is None:
             from ib_daily_picker.store.repositories import RecommendationRepository

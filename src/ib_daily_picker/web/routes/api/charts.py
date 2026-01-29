@@ -345,7 +345,7 @@ async def get_indicators(
 
 
 def _series_to_indicator_values(
-    series: "pd.Series[Any]", ohlcv_data: list[dict[str, Any]]
+    series: pd.Series[Any], ohlcv_data: list[dict[str, Any]]
 ) -> list[IndicatorValue]:
     """Convert pandas Series to list of IndicatorValue."""
     return [
@@ -386,7 +386,7 @@ async def get_correlation(
     end_date = date.today()
     start_date = end_date - timedelta(days=days)
 
-    returns_dict: dict[str, "pd.Series[Any]"] = {}
+    returns_dict: dict[str, pd.Series[Any]] = {}
 
     for symbol in symbol_list:
         ohlcv_list = repo.get_ohlcv(

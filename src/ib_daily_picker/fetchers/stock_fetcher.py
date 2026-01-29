@@ -14,19 +14,19 @@ ARCHITECTURE NOTES:
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from datetime import date, datetime, timedelta
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
-from ib_daily_picker.config import get_settings
 from ib_daily_picker.fetchers.base import (
+    FetcherWithFallback,
     FetchProgress,
     FetchResult,
     FetchStatus,
-    FetcherWithFallback,
 )
 from ib_daily_picker.fetchers.finnhub_fetcher import get_finnhub_fetcher
 from ib_daily_picker.fetchers.yfinance_fetcher import get_yfinance_fetcher
-from ib_daily_picker.models import OHLCV, OHLCVBatch, StockMetadata
+from ib_daily_picker.models import OHLCV, StockMetadata
 
 if TYPE_CHECKING:
     from ib_daily_picker.store.database import DatabaseManager
@@ -40,8 +40,8 @@ class StockDataFetcher:
 
     def __init__(
         self,
-        db: "DatabaseManager | None" = None,
-        repo: "StockRepository | None" = None,
+        db: DatabaseManager | None = None,
+        repo: StockRepository | None = None,
     ) -> None:
         """Initialize stock data fetcher.
 
@@ -56,7 +56,7 @@ class StockDataFetcher:
             get_finnhub_fetcher(),
         )
 
-    def _get_repo(self) -> "StockRepository":
+    def _get_repo(self) -> StockRepository:
         """Get or create stock repository."""
         if self._repo is not None:
             return self._repo

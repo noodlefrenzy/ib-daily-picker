@@ -14,14 +14,14 @@ from __future__ import annotations
 
 from contextlib import nullcontext
 from pathlib import Path
-from typing import Annotated, Any, Optional
+from typing import Annotated, Any
 
 import typer
 from rich.console import Console
 from rich.table import Table
 
 from ib_daily_picker import __version__
-from ib_daily_picker.config import get_settings, reset_settings
+from ib_daily_picker.config import get_settings
 
 # Rich console for formatted output
 console = Console()
@@ -46,7 +46,7 @@ def version_callback(value: bool) -> None:
 @app.callback()
 def main(
     version: Annotated[
-        Optional[bool],
+        bool | None,
         typer.Option(
             "--version",
             "-V",
@@ -65,10 +65,8 @@ def main(
     ] = False,
 ) -> None:
     """IB Daily Picker - Stock opportunity identification tool."""
-    # Store verbose flag in context for subcommands
-    ctx = typer.Context
     if verbose:
-        # Will be used by subcommands
+        # Verbose flag available for subcommands
         pass
 
 
@@ -94,8 +92,6 @@ def config_show(
     settings = get_settings()
 
     if json_output:
-        import json
-
         console.print(settings.model_dump_json(indent=2))
         return
 
@@ -543,7 +539,7 @@ def _get_ticker_sector(symbol: str) -> str | None:
 @fetch_app.command("stocks")
 def fetch_stocks(
     tickers: Annotated[
-        Optional[str],
+        str | None,
         typer.Option(
             "--tickers",
             "-t",
@@ -551,7 +547,7 @@ def fetch_stocks(
         ),
     ] = None,
     sector: Annotated[
-        Optional[str],
+        str | None,
         typer.Option(
             "--sector",
             "-S",
@@ -559,21 +555,21 @@ def fetch_stocks(
         ),
     ] = None,
     same_sector_as: Annotated[
-        Optional[str],
+        str | None,
         typer.Option(
             "--same-sector-as",
             help="Fetch stocks from the same sector as this ticker (e.g., AAPL, LVMUY)",
         ),
     ] = None,
     start_date: Annotated[
-        Optional[str],
+        str | None,
         typer.Option(
             "--from",
             help="Start date (YYYY-MM-DD)",
         ),
     ] = None,
     end_date: Annotated[
-        Optional[str],
+        str | None,
         typer.Option(
             "--to",
             help="End date (YYYY-MM-DD)",
@@ -715,7 +711,7 @@ def fetch_stocks(
 @fetch_app.command("flows")
 def fetch_flows(
     tickers: Annotated[
-        Optional[str],
+        str | None,
         typer.Option(
             "--tickers",
             "-t",
@@ -723,7 +719,7 @@ def fetch_flows(
         ),
     ] = None,
     min_premium: Annotated[
-        Optional[float],
+        float | None,
         typer.Option(
             "--min-premium",
             help="Minimum premium filter",
@@ -921,7 +917,7 @@ def fetch_status(
                 )
 
         console.print(ticker_table)
-        console.print(f"\n[dim]Gaps = estimated missing trading days (>5 shown)[/dim]")
+        console.print("\n[dim]Gaps = estimated missing trading days (>5 shown)[/dim]")
 
 
 # =============================================================================
@@ -991,7 +987,7 @@ def strategy_validate(
         console.print(f"[green]Valid strategy: {strategy.name} v{strategy.version}[/green]")
 
         # Show strategy details
-        console.print(f"\n[bold]Indicators:[/bold]")
+        console.print("\n[bold]Indicators:[/bold]")
         for ind in strategy.indicators:
             console.print(f"  - {ind.name}: {ind.type.value} (params: {ind.params})")
 
@@ -1088,14 +1084,14 @@ def strategy_show(
 def strategy_create(
     name: Annotated[str, typer.Argument(help="Strategy name")],
     from_english: Annotated[
-        Optional[str],
+        str | None,
         typer.Option(
             "--from-english",
             help="Natural language description to convert",
         ),
     ] = None,
     output: Annotated[
-        Optional[Path],
+        Path | None,
         typer.Option("--output", "-o", help="Output file path"),
     ] = None,
 ) -> None:
@@ -1186,7 +1182,7 @@ risk:
 @app.command("analyze")
 def analyze(
     strategy: Annotated[
-        Optional[str],
+        str | None,
         typer.Option(
             "--strategy",
             "-s",
@@ -1194,7 +1190,7 @@ def analyze(
         ),
     ] = None,
     tickers: Annotated[
-        Optional[str],
+        str | None,
         typer.Option(
             "--tickers",
             "-t",
@@ -1383,7 +1379,7 @@ app.add_typer(journal_app)
 @journal_app.command("list")
 def journal_list(
     status: Annotated[
-        Optional[str],
+        str | None,
         typer.Option("--status", help="Filter by status: open, closed, all"),
     ] = "all",
     limit: Annotated[
@@ -1477,15 +1473,15 @@ def journal_open(
         typer.Option("--direction", "-d", help="Trade direction: long or short"),
     ] = "long",
     stop_loss: Annotated[
-        Optional[float],
+        float | None,
         typer.Option("--stop", help="Stop loss price"),
     ] = None,
     take_profit: Annotated[
-        Optional[float],
+        float | None,
         typer.Option("--target", help="Take profit target"),
     ] = None,
     tags: Annotated[
-        Optional[str],
+        str | None,
         typer.Option("--tags", help="Comma-separated tags"),
     ] = None,
 ) -> None:
@@ -1568,7 +1564,7 @@ def journal_close(
         typer.Option("--price", "-p", help="Exit price"),
     ],
     notes: Annotated[
-        Optional[str],
+        str | None,
         typer.Option("--notes", "-n", help="Trade notes"),
     ] = None,
 ) -> None:
@@ -1625,11 +1621,11 @@ def journal_note(
 @journal_app.command("metrics")
 def journal_metrics(
     start_date: Annotated[
-        Optional[str],
+        str | None,
         typer.Option("--from", help="Start date (YYYY-MM-DD)"),
     ] = None,
     end_date: Annotated[
-        Optional[str],
+        str | None,
         typer.Option("--to", help="End date (YYYY-MM-DD)"),
     ] = None,
     extended: Annotated[
@@ -1750,11 +1746,11 @@ def journal_export(
         typer.Option("--format", "-f", help="Output format: csv or json"),
     ] = "csv",
     start_date: Annotated[
-        Optional[str],
+        str | None,
         typer.Option("--from", help="Start date (YYYY-MM-DD)"),
     ] = None,
     end_date: Annotated[
-        Optional[str],
+        str | None,
         typer.Option("--to", help="End date (YYYY-MM-DD)"),
     ] = None,
 ) -> None:
@@ -1805,7 +1801,7 @@ def backtest_run(
         typer.Option("--to", help="End date (YYYY-MM-DD)"),
     ],
     tickers: Annotated[
-        Optional[str],
+        str | None,
         typer.Option("--tickers", "-t", help="Comma-separated tickers"),
     ] = None,
     initial_capital: Annotated[
@@ -1898,7 +1894,7 @@ def backtest_monte_carlo(
         typer.Option("--to", help="End date (YYYY-MM-DD)"),
     ],
     tickers: Annotated[
-        Optional[str],
+        str | None,
         typer.Option("--tickers", "-t", help="Comma-separated tickers"),
     ] = None,
     initial_capital: Annotated[
@@ -1930,7 +1926,7 @@ def backtest_monte_carlo(
         typer.Option("--slippage-std", help="Slippage std deviation (0.002 = 0.2%)"),
     ] = 0.002,
     seed: Annotated[
-        Optional[int],
+        int | None,
         typer.Option("--seed", help="Random seed for reproducibility"),
     ] = None,
     json_output: Annotated[
@@ -2057,7 +2053,7 @@ def backtest_compare(
         typer.Option("--to", help="End date (YYYY-MM-DD)"),
     ],
     tickers: Annotated[
-        Optional[str],
+        str | None,
         typer.Option("--tickers", "-t", help="Comma-separated tickers"),
     ] = None,
     initial_capital: Annotated[
@@ -2130,7 +2126,7 @@ def backtest_walk_forward(
         typer.Option("--to", help="End date (YYYY-MM-DD)"),
     ],
     tickers: Annotated[
-        Optional[str],
+        str | None,
         typer.Option("--tickers", "-t", help="Comma-separated tickers"),
     ] = None,
     initial_capital: Annotated[
@@ -2398,8 +2394,9 @@ def watchlist_remove(
 @watchlist_app.command("list")
 def watchlist_list() -> None:
     """List all symbols in your watchlist."""
-    from ib_daily_picker.store.database import get_db_manager
     from rich.table import Table
+
+    from ib_daily_picker.store.database import get_db_manager
 
     db = get_db_manager()
     entries = db.watchlist_list()
@@ -2517,10 +2514,11 @@ def earnings_check(
     ] = 14,
 ) -> None:
     """Check upcoming earnings for specified symbols or watchlist."""
-    from datetime import datetime, timedelta
+    from datetime import datetime
+
+    from rich.table import Table
 
     from ib_daily_picker.store.database import get_db_manager
-    from rich.table import Table
 
     # Get symbols from argument or watchlist
     if symbols:
@@ -2539,7 +2537,6 @@ def earnings_check(
         console.print(f"[dim]Checking watchlist ({len(ticker_list)} symbols)...[/dim]")
 
     today = datetime.now().date()
-    cutoff = today + timedelta(days=days)
 
     results = []
     with console.status("[bold cyan]Fetching earnings dates..."):

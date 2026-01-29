@@ -13,18 +13,16 @@ ARCHITECTURE NOTES:
 from __future__ import annotations
 
 import json
-from datetime import date
 from decimal import Decimal
 from io import StringIO
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ib_daily_picker.backtest.metrics import BacktestMetrics
     from ib_daily_picker.backtest.monte_carlo import MonteCarloResult, PercentileDistribution
     from ib_daily_picker.backtest.runner import BacktestResult
 
 
-def format_console_report(result: "BacktestResult") -> str:
+def format_console_report(result: BacktestResult) -> str:
     """Format backtest result for console output.
 
     Args:
@@ -123,7 +121,7 @@ def format_console_report(result: "BacktestResult") -> str:
     return "\n".join(lines)
 
 
-def format_json_report(result: "BacktestResult") -> str:
+def format_json_report(result: BacktestResult) -> str:
     """Format backtest result as JSON.
 
     Args:
@@ -214,7 +212,7 @@ def format_json_report(result: "BacktestResult") -> str:
     return json.dumps(data, indent=2)
 
 
-def format_trades_table(result: "BacktestResult", limit: int = 50) -> str:
+def format_trades_table(result: BacktestResult, limit: int = 50) -> str:
     """Format trades as a text table.
 
     Args:
@@ -250,7 +248,7 @@ def format_trades_table(result: "BacktestResult", limit: int = 50) -> str:
     return "\n".join(lines)
 
 
-def format_comparison_table(results: list["BacktestResult"]) -> str:
+def format_comparison_table(results: list[BacktestResult]) -> str:
     """Format comparison of multiple backtest results.
 
     Args:
@@ -291,7 +289,7 @@ def format_comparison_table(results: list["BacktestResult"]) -> str:
     return "\n".join(lines)
 
 
-def export_equity_curve_csv(result: "BacktestResult") -> str:
+def export_equity_curve_csv(result: BacktestResult) -> str:
     """Export equity curve as CSV.
 
     Args:
@@ -314,7 +312,7 @@ def export_equity_curve_csv(result: "BacktestResult") -> str:
     return output.getvalue()
 
 
-def format_monte_carlo_console(result: "MonteCarloResult") -> str:
+def format_monte_carlo_console(result: MonteCarloResult) -> str:
     """Format Monte Carlo result for console output.
 
     Args:
@@ -397,7 +395,7 @@ def format_monte_carlo_console(result: "MonteCarloResult") -> str:
     return "\n".join(lines)
 
 
-def _format_distribution_table(distributions: list["PercentileDistribution"]) -> str:
+def _format_distribution_table(distributions: list[PercentileDistribution]) -> str:
     """Format a table of percentile distributions.
 
     Args:
@@ -452,7 +450,7 @@ def _format_distribution_table(distributions: list["PercentileDistribution"]) ->
     return "\n".join(lines)
 
 
-def format_monte_carlo_json(result: "MonteCarloResult") -> str:
+def format_monte_carlo_json(result: MonteCarloResult) -> str:
     """Format Monte Carlo result as JSON.
 
     Args:
@@ -465,7 +463,7 @@ def format_monte_carlo_json(result: "MonteCarloResult") -> str:
     def decimal_to_str(val: Decimal | None) -> str | None:
         return str(val) if val is not None else None
 
-    def dist_to_dict(dist: "PercentileDistribution | None") -> dict | None:
+    def dist_to_dict(dist: PercentileDistribution | None) -> dict | None:
         if dist is None:
             return None
         return {
@@ -531,7 +529,7 @@ def format_monte_carlo_json(result: "MonteCarloResult") -> str:
 
 
 def format_walk_forward_console(
-    results: list["BacktestResult"],
+    results: list[BacktestResult],
     in_sample_days: int,
     out_sample_days: int,
 ) -> str:
@@ -637,7 +635,7 @@ def format_walk_forward_console(
 
 
 def format_walk_forward_json(
-    results: list["BacktestResult"],
+    results: list[BacktestResult],
     in_sample_days: int,
     out_sample_days: int,
 ) -> str:

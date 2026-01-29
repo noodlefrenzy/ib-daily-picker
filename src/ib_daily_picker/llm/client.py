@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Type, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from pydantic import BaseModel
 
@@ -35,7 +35,7 @@ class LLMClient(ABC):
     def complete(
         self,
         prompt: str,
-        response_model: Type[T],
+        response_model: type[T],
         system_prompt: str | None = None,
         temperature: float = 0.7,
         max_tokens: int = 4096,
@@ -120,7 +120,7 @@ class AnthropicClient(LLMClient):
     def complete(
         self,
         prompt: str,
-        response_model: Type[T],
+        response_model: type[T],
         system_prompt: str | None = None,
         temperature: float = 0.7,
         max_tokens: int = 4096,
@@ -204,7 +204,7 @@ class OllamaClient(LLMClient):
     def complete(
         self,
         prompt: str,
-        response_model: Type[T],
+        response_model: type[T],
         system_prompt: str | None = None,
         temperature: float = 0.7,
         max_tokens: int = 4096,

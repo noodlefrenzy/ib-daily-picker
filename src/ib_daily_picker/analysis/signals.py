@@ -13,13 +13,13 @@ ARCHITECTURE NOTES:
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from ib_daily_picker.analysis.evaluator import EvaluationResult, StrategyEvaluator
-from ib_daily_picker.config import get_settings
 from ib_daily_picker.models import (
     OHLCV,
     FlowAlert,
@@ -29,7 +29,7 @@ from ib_daily_picker.models import (
 )
 
 if TYPE_CHECKING:
-    from ib_daily_picker.analysis.strategy_schema import RiskProfileName, Strategy
+    from ib_daily_picker.analysis.strategy_schema import Strategy
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +62,7 @@ class SignalGenerator:
 
     def __init__(
         self,
-        strategy: "Strategy",
+        strategy: Strategy,
         account_size: Decimal | None = None,
     ) -> None:
         """Initialize signal generator.
@@ -76,7 +76,7 @@ class SignalGenerator:
         self._account_size = account_size or Decimal("100000")
 
     @property
-    def strategy(self) -> "Strategy":
+    def strategy(self) -> Strategy:
         """Get the strategy."""
         return self._strategy
 
@@ -204,7 +204,7 @@ class MultiStrategySignalGenerator:
 
     def __init__(
         self,
-        strategies: list["Strategy"],
+        strategies: list[Strategy],
         account_size: Decimal | None = None,
     ) -> None:
         """Initialize with multiple strategies.

@@ -15,7 +15,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -66,14 +66,14 @@ class FlowAlert(BaseModel):
     direction: FlowDirection = Field(
         default=FlowDirection.UNKNOWN, description="Bullish/bearish direction"
     )
-    premium: Optional[Decimal] = Field(None, description="Total premium paid")
-    volume: Optional[int] = Field(None, description="Contract volume")
-    open_interest: Optional[int] = Field(None, description="Open interest")
-    strike: Optional[Decimal] = Field(None, description="Strike price")
-    expiration: Optional[date] = Field(None, description="Option expiration date")
-    option_type: Optional[OptionType] = Field(None, description="Call or put")
+    premium: Decimal | None = Field(None, description="Total premium paid")
+    volume: int | None = Field(None, description="Contract volume")
+    open_interest: int | None = Field(None, description="Open interest")
+    strike: Decimal | None = Field(None, description="Strike price")
+    expiration: date | None = Field(None, description="Option expiration date")
+    option_type: OptionType | None = Field(None, description="Call or put")
     sentiment: Sentiment = Field(default=Sentiment.NEUTRAL, description="Overall sentiment")
-    raw_data: Optional[dict[str, Any]] = Field(None, description="Original API response")
+    raw_data: dict[str, Any] | None = Field(None, description="Original API response")
     created_at: datetime = Field(
         default_factory=datetime.utcnow, description="Record creation time"
     )
@@ -171,7 +171,7 @@ class FlowAlertBatch(BaseModel):
         """Total premium across all alerts."""
         return sum((a.premium or Decimal("0") for a in self.alerts), start=Decimal("0"))
 
-    def filter_by_symbol(self, symbol: str) -> "FlowAlertBatch":
+    def filter_by_symbol(self, symbol: str) -> FlowAlertBatch:
         """Filter alerts by symbol."""
         symbol = symbol.upper()
         return FlowAlertBatch(
@@ -179,14 +179,14 @@ class FlowAlertBatch(BaseModel):
             fetched_at=self.fetched_at,
         )
 
-    def filter_by_direction(self, direction: FlowDirection) -> "FlowAlertBatch":
+    def filter_by_direction(self, direction: FlowDirection) -> FlowAlertBatch:
         """Filter alerts by direction."""
         return FlowAlertBatch(
             alerts=[a for a in self.alerts if a.direction == direction],
             fetched_at=self.fetched_at,
         )
 
-    def filter_by_min_premium(self, min_premium: Decimal) -> "FlowAlertBatch":
+    def filter_by_min_premium(self, min_premium: Decimal) -> FlowAlertBatch:
         """Filter alerts by minimum premium."""
         return FlowAlertBatch(
             alerts=[a for a in self.alerts if a.premium and a.premium >= min_premium],

@@ -13,10 +13,11 @@ ARCHITECTURE NOTES:
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING
 
 from ib_daily_picker.analysis.indicators import IndicatorCalculator
 from ib_daily_picker.analysis.strategy_schema import (
@@ -30,7 +31,6 @@ from ib_daily_picker.models import OHLCV, FlowAlert
 if TYPE_CHECKING:
     from ib_daily_picker.analysis.strategy_schema import (
         EntryConfig,
-        ExitConfig,
         FlowCondition,
         IndicatorCondition,
     )
@@ -170,7 +170,7 @@ class StrategyEvaluator:
 
     def _evaluate_entry(
         self,
-        entry_config: "EntryConfig",
+        entry_config: EntryConfig,
         indicator_values: dict[str, float],
         flow_alerts: Sequence[FlowAlert],
         evaluation_time: datetime,
@@ -209,7 +209,7 @@ class StrategyEvaluator:
 
     def _evaluate_indicator_condition(
         self,
-        condition: "IndicatorCondition",
+        condition: IndicatorCondition,
         indicator_values: dict[str, float],
     ) -> ConditionResult:
         """Evaluate an indicator-based condition."""
@@ -248,7 +248,7 @@ class StrategyEvaluator:
 
     def _evaluate_flow_condition(
         self,
-        condition: "FlowCondition",
+        condition: FlowCondition,
         flow_alerts: Sequence[FlowAlert],
         evaluation_time: datetime,
     ) -> ConditionResult:

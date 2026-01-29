@@ -26,9 +26,7 @@ import pytest
 
 from ib_daily_picker.backtest.metrics import calculate_backtest_metrics
 from ib_daily_picker.backtest.monte_carlo import (
-    EquityConePoint,
     MonteCarloConfig,
-    MonteCarloResult,
     MonteCarloRunner,
     PercentileDistribution,
 )
@@ -94,7 +92,6 @@ class TestTradeTransformations:
         trades = [
             create_trade(entry_date=today - timedelta(days=10), trade_id=f"t{i}") for i in range(10)
         ]
-        result = create_backtest_result(trades)
 
         config = MonteCarloConfig(
             num_simulations=10,

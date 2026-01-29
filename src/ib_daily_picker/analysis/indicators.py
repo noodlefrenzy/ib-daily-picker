@@ -12,11 +12,9 @@ ARCHITECTURE NOTES:
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from decimal import Decimal
-from typing import Sequence
 
-import numpy as np
 import pandas as pd
 
 from ib_daily_picker.models import OHLCV
@@ -369,7 +367,7 @@ class IndicatorCalculator:
         Returns:
             IndicatorResult or None if not found
         """
-        for key, result in self._results.items():
+        for _key, result in self._results.items():
             if result.name == name:
                 return result
         return None

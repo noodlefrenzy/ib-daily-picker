@@ -13,7 +13,7 @@ ARCHITECTURE NOTES:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date, timedelta
+from datetime import date
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
@@ -98,7 +98,7 @@ class BacktestMetrics:
 
 
 def calculate_backtest_metrics(
-    trades: list["Trade"],
+    trades: list[Trade],
     initial_capital: Decimal = Decimal("100000"),
     start_date: date | None = None,
     end_date: date | None = None,
@@ -269,7 +269,7 @@ def calculate_backtest_metrics(
     return metrics
 
 
-def _calculate_streaks(trades: list["Trade"]) -> tuple[int, int]:
+def _calculate_streaks(trades: list[Trade]) -> tuple[int, int]:
     """Calculate max consecutive wins and losses."""
     max_wins = 0
     max_losses = 0
@@ -296,7 +296,7 @@ def _calculate_streaks(trades: list["Trade"]) -> tuple[int, int]:
 
 
 def _build_equity_curve(
-    trades: list["Trade"],
+    trades: list[Trade],
     initial_capital: Decimal,
 ) -> list[EquityCurvePoint]:
     """Build equity curve from trades."""

@@ -30,15 +30,13 @@ from ib_daily_picker.models import (
 )
 
 if TYPE_CHECKING:
-    import duckdb
-
     from ib_daily_picker.store.database import DatabaseManager
 
 
 class StockRepository:
     """Repository for stock data (OHLCV and metadata)."""
 
-    def __init__(self, db: "DatabaseManager") -> None:
+    def __init__(self, db: DatabaseManager) -> None:
         """Initialize with database manager."""
         self._db = db
 
@@ -205,7 +203,7 @@ class StockRepository:
 class FlowRepository:
     """Repository for flow alert data."""
 
-    def __init__(self, db: "DatabaseManager") -> None:
+    def __init__(self, db: DatabaseManager) -> None:
         """Initialize with database manager."""
         self._db = db
 
@@ -335,7 +333,7 @@ class FlowRepository:
 class RecommendationRepository:
     """Repository for trade recommendations."""
 
-    def __init__(self, db: "DatabaseManager") -> None:
+    def __init__(self, db: DatabaseManager) -> None:
         """Initialize with database manager."""
         self._db = db
 
@@ -433,7 +431,7 @@ class RecommendationRepository:
 class TradeRepository:
     """Repository for trade journal entries."""
 
-    def __init__(self, db: "DatabaseManager") -> None:
+    def __init__(self, db: DatabaseManager) -> None:
         """Initialize with database manager."""
         self._db = db
 

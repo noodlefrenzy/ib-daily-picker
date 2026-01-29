@@ -224,7 +224,7 @@ class Settings(BaseSettings):
     )
 
     @classmethod
-    def from_toml(cls, config_path: Path | None = None) -> "Settings":
+    def from_toml(cls, config_path: Path | None = None) -> Settings:
         """Load settings from TOML file, merging with defaults and env vars."""
         if config_path is None:
             config_path = get_default_config_dir() / "config.toml"

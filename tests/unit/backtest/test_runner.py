@@ -23,11 +23,8 @@ EDGE CASES:
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 
-import pytest
-
 from ib_daily_picker.backtest.metrics import (
     BacktestMetrics,
-    EquityCurvePoint,
     calculate_backtest_metrics,
     compare_strategies,
 )

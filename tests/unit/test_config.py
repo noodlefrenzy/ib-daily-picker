@@ -23,8 +23,6 @@ from __future__ import annotations
 from decimal import Decimal
 from pathlib import Path
 
-import pytest
-
 from ib_daily_picker.config import (
     APISettings,
     BasketSettings,

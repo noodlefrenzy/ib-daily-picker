@@ -124,7 +124,7 @@ class StrategyLoader:
             errors = e.errors()
             error_msgs = [f"{'.'.join(str(x) for x in err['loc'])}: {err['msg']}" for err in errors]
             raise StrategyValidationError(
-                f"Strategy validation failed:\n" + "\n".join(f"  - {m}" for m in error_msgs),
+                "Strategy validation failed:\n" + "\n".join(f"  - {m}" for m in error_msgs),
                 errors=errors,
             )
 

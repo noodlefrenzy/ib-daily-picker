@@ -14,7 +14,6 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -23,12 +22,12 @@ class StockMetadata(BaseModel):
     """Stock metadata (company info, sector, etc.)."""
 
     symbol: str = Field(..., description="Stock ticker symbol")
-    name: Optional[str] = Field(None, description="Company name")
-    sector: Optional[str] = Field(None, description="Business sector")
-    industry: Optional[str] = Field(None, description="Industry classification")
-    market_cap: Optional[int] = Field(None, description="Market capitalization")
+    name: str | None = Field(None, description="Company name")
+    sector: str | None = Field(None, description="Business sector")
+    industry: str | None = Field(None, description="Industry classification")
+    market_cap: int | None = Field(None, description="Market capitalization")
     currency: str = Field(default="USD", description="Trading currency")
-    exchange: Optional[str] = Field(None, description="Stock exchange")
+    exchange: str | None = Field(None, description="Stock exchange")
     updated_at: datetime = Field(
         default_factory=datetime.utcnow, description="Last metadata update"
     )
@@ -50,7 +49,7 @@ class OHLCV(BaseModel):
     low_price: Decimal = Field(..., description="Lowest price", alias="low")
     close_price: Decimal = Field(..., description="Closing price", alias="close")
     volume: int = Field(..., description="Trading volume")
-    adjusted_close: Optional[Decimal] = Field(None, description="Split-adjusted close")
+    adjusted_close: Decimal | None = Field(None, description="Split-adjusted close")
     dividend: Decimal = Field(default=Decimal("0"), description="Dividend amount")
     stock_split: Decimal = Field(default=Decimal("1"), description="Stock split ratio")
 

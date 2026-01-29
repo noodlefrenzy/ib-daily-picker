@@ -7,8 +7,8 @@ PURPOSE: Provide common fixtures for database, config, and mocks
 from __future__ import annotations
 
 import tempfile
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
 
 import pytest
 

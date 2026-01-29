@@ -6,10 +6,10 @@ PURPOSE: Data fetching from yfinance, Finnhub, and Unusual Whales
 
 from ib_daily_picker.fetchers.base import (
     BaseFetcher,
+    FetcherWithFallback,
     FetchProgress,
     FetchResult,
     FetchStatus,
-    FetcherWithFallback,
 )
 from ib_daily_picker.fetchers.finnhub_fetcher import (
     FinnhubFetcher,

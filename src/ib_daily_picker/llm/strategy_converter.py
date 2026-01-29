@@ -13,7 +13,6 @@ ARCHITECTURE NOTES:
 from __future__ import annotations
 
 import logging
-from typing import Literal
 
 import yaml
 from pydantic import BaseModel, Field

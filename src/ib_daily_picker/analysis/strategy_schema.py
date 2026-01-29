@@ -92,7 +92,7 @@ class IndicatorConfig(BaseModel):
         return v or {}
 
     @model_validator(mode="after")
-    def validate_params(self) -> "IndicatorConfig":
+    def validate_params(self) -> IndicatorConfig:
         """Validate params based on indicator type."""
         required = {
             IndicatorType.RSI: ["period"],

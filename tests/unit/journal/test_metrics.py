@@ -25,13 +25,7 @@ EDGE CASES:
 from datetime import datetime, timedelta
 from decimal import Decimal
 
-import pytest
-
 from ib_daily_picker.journal.metrics import (
-    DrawdownInfo,
-    ExtendedMetrics,
-    StreakInfo,
-    TimeAnalysis,
     calculate_extended_metrics,
     filter_trades,
 )

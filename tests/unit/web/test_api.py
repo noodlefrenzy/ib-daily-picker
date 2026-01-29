@@ -17,13 +17,8 @@ EDGE CASES:
 - Empty list when no data
 """
 
-from datetime import date, datetime
-from decimal import Decimal
-
-import pytest
 from fastapi.testclient import TestClient
 
-from ib_daily_picker.models import OHLCV, Recommendation, RecommendationStatus, SignalType
 from ib_daily_picker.web.main import create_app
 
 

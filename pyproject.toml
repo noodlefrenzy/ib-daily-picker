@@ -60,7 +60,7 @@ dev = [
 ib-picker = "ib_daily_picker.cli:app"
 
 [project.urls]
-Repository = "https://github.com/user/ib-daily-picker"
+Repository = "https://github.com/noodlefrenzy/ib-daily-picker"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ib_daily_picker"]

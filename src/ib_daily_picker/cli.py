@@ -2115,6 +2115,142 @@ def backtest_compare(
     console.print("\n" + format_comparison_table(results))
 
 
+@backtest_app.command("walk-forward")
+def backtest_walk_forward(
+    strategy_name: Annotated[
+        str,
+        typer.Argument(help="Strategy name to backtest"),
+    ],
+    start_date: Annotated[
+        str,
+        typer.Option("--from", help="Start date (YYYY-MM-DD)"),
+    ],
+    end_date: Annotated[
+        str,
+        typer.Option("--to", help="End date (YYYY-MM-DD)"),
+    ],
+    tickers: Annotated[
+        Optional[str],
+        typer.Option("--tickers", "-t", help="Comma-separated tickers"),
+    ] = None,
+    initial_capital: Annotated[
+        float,
+        typer.Option("--capital", help="Initial capital"),
+    ] = 100000.0,
+    in_sample_days: Annotated[
+        int,
+        typer.Option("--in-sample", help="In-sample (training) period days"),
+    ] = 252,
+    out_sample_days: Annotated[
+        int,
+        typer.Option("--out-sample", help="Out-of-sample (testing) period days"),
+    ] = 63,
+    json_output: Annotated[
+        bool,
+        typer.Option("--json", help="Output as JSON"),
+    ] = False,
+) -> None:
+    """Run walk-forward analysis to detect strategy overfitting.
+
+    Walk-forward validation splits the data into rolling windows:
+    - Each window has an in-sample (training) period and out-of-sample (test) period
+    - The strategy is evaluated only on out-of-sample data
+    - Multiple windows provide a realistic view of live trading performance
+
+    This is THE gold standard for validating trading strategies, as it reveals
+    whether a strategy has a genuine edge or is merely overfit to historical data.
+
+    A robust strategy should show:
+    - Positive returns in most (70%+) out-of-sample windows
+    - Consistent win rates across windows
+    - No single window with catastrophic drawdowns
+
+    Examples:
+        ib-picker backtest walk-forward momentum_rsi --from 2022-01-01 --to 2024-12-31
+        ib-picker backtest walk-forward strategy_name --in-sample 126 --out-sample 21
+    """
+    from datetime import date as date_type
+    from decimal import Decimal
+
+    from rich.progress import Progress, SpinnerColumn, TextColumn
+
+    from ib_daily_picker.analysis import get_strategy_loader
+    from ib_daily_picker.backtest import (
+        format_walk_forward_console,
+        format_walk_forward_json,
+        run_walk_forward,
+    )
+    from ib_daily_picker.store.database import get_db_manager
+
+    settings = get_settings()
+
+    # Load strategy
+    loader = get_strategy_loader()
+    try:
+        strategy = loader.load(strategy_name)
+    except FileNotFoundError:
+        err_console.print(f"[red]Strategy not found: {strategy_name}[/red]")
+        raise typer.Exit(1)
+
+    # Get ticker list
+    ticker_list = [
+        t.strip().upper()
+        for t in (tickers.split(",") if tickers else settings.basket.default_tickers)
+    ]
+
+    # Validate date range is sufficient
+    start = date_type.fromisoformat(start_date)
+    end = date_type.fromisoformat(end_date)
+    min_days_needed = in_sample_days + out_sample_days
+    actual_days = (end - start).days
+
+    if actual_days < min_days_needed:
+        err_console.print(
+            f"[red]Date range too short: need at least {min_days_needed} days "
+            f"(in-sample: {in_sample_days} + out-sample: {out_sample_days}), "
+            f"but only {actual_days} days provided.[/red]"
+        )
+        raise typer.Exit(1)
+
+    estimated_windows = actual_days // out_sample_days
+    console.print(f"[cyan]Walk-Forward Analysis: {strategy.name}[/cyan]")
+    console.print(f"  Period: {start_date} to {end_date}")
+    console.print(f"  Tickers: {', '.join(ticker_list[:5])}{'...' if len(ticker_list) > 5 else ''}")
+    console.print(f"  In-Sample: {in_sample_days} days, Out-of-Sample: {out_sample_days} days")
+    console.print(f"  Estimated Windows: ~{estimated_windows}")
+
+    db = get_db_manager()
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+    ) as progress:
+        progress.add_task("[cyan]Running walk-forward analysis...", total=None)
+
+        results = run_walk_forward(
+            strategy=strategy,
+            symbols=ticker_list,
+            db=db,
+            start_date=start,
+            end_date=end,
+            in_sample_days=in_sample_days,
+            out_sample_days=out_sample_days,
+            initial_capital=Decimal(str(initial_capital)),
+        )
+
+    if not results:
+        err_console.print("[red]Walk-forward analysis produced no results[/red]")
+        raise typer.Exit(1)
+
+    # Output results
+    if json_output:
+        console.print(format_walk_forward_json(results, in_sample_days, out_sample_days))
+    else:
+        console.print()
+        console.print(format_walk_forward_console(results, in_sample_days, out_sample_days))
+
+
 # =============================================================================
 # Database Commands
 # =============================================================================

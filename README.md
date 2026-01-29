@@ -166,6 +166,14 @@ ib-picker backtest run example_rsi_flow --from 2024-01-01 --to 2024-12-31
 # Compare strategies
 ib-picker backtest compare strategy1,strategy2 --from 2024-01-01 --to 2024-12-31
 
+# Walk-forward validation (detect overfitting)
+ib-picker backtest walk-forward momentum_rsi --from 2022-01-01 --to 2024-12-31
+ib-picker backtest walk-forward my_strategy --in-sample 126 --out-sample 21
+
+# Monte Carlo simulation (robustness testing)
+ib-picker backtest monte-carlo momentum_rsi --from 2024-01-01 --to 2024-06-30
+ib-picker backtest monte-carlo my_strategy --sims 500 --seed 42 --removal
+
 # Custom parameters
 ib-picker backtest run my_strategy \
   --from 2023-01-01 \
@@ -174,6 +182,10 @@ ib-picker backtest run my_strategy \
   --position-size 0.1 \
   --output results.json
 ```
+
+**Walk-Forward Analysis** splits your data into rolling in-sample (training) and out-of-sample (testing) periods. A robust strategy should show positive returns in 70%+ of out-of-sample windows.
+
+**Monte Carlo Simulation** tests strategy robustness by running thousands of scenarios with trade shuffling, random removal, and slippage variance. This separates genuinely robust strategies from lucky ones.
 
 ### Database
 

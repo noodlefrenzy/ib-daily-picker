@@ -25,6 +25,8 @@ from ib_daily_picker.backtest.reporter import (
     format_monte_carlo_console,
     format_monte_carlo_json,
     format_trades_table,
+    format_walk_forward_console,
+    format_walk_forward_json,
 )
 from ib_daily_picker.backtest.runner import (
     BacktestConfig,
@@ -54,6 +56,8 @@ __all__ = [
     "format_monte_carlo_console",
     "format_monte_carlo_json",
     "format_trades_table",
+    "format_walk_forward_console",
+    "format_walk_forward_json",
     # Runner
     "BacktestConfig",
     "BacktestPosition",

@@ -528,3 +528,178 @@ def format_monte_carlo_json(result: "MonteCarloResult") -> str:
     }
 
     return json.dumps(data, indent=2)
+
+
+def format_walk_forward_console(
+    results: list["BacktestResult"],
+    in_sample_days: int,
+    out_sample_days: int,
+) -> str:
+    """Format walk-forward results for console output.
+
+    Args:
+        results: List of BacktestResult from each out-of-sample window
+        in_sample_days: Training period length
+        out_sample_days: Testing period length
+
+    Returns:
+        Formatted string for console display
+    """
+    if not results:
+        return "No walk-forward results available."
+
+    lines = []
+    strategy_name = results[0].strategy_name.split(" (Window")[0]
+
+    lines.append(f"{'=' * 70}")
+    lines.append(f"WALK-FORWARD ANALYSIS: {strategy_name}")
+    lines.append(f"{'=' * 70}")
+    lines.append("")
+    lines.append("Configuration:")
+    lines.append(f"  In-Sample Period:   {in_sample_days} days (~{in_sample_days // 21} months)")
+    lines.append(f"  Out-of-Sample:      {out_sample_days} days (~{out_sample_days // 21} months)")
+    lines.append(f"  Windows Tested:     {len(results)}")
+    lines.append("")
+
+    # Window-by-window summary table
+    lines.append("OUT-OF-SAMPLE RESULTS BY WINDOW")
+    lines.append(f"  {'Window':<8} {'Period':<25} {'Trades':>7} {'Return':>10} {'Win Rate':>10} {'Max DD':>10}")
+    lines.append(f"  {'-' * 8} {'-' * 25} {'-' * 7} {'-' * 10} {'-' * 10} {'-' * 10}")
+
+    total_trades = 0
+    total_pnl = Decimal("0")
+    wins = 0
+    losses = 0
+    max_dd_all = Decimal("0")
+
+    for i, result in enumerate(results, 1):
+        m = result.metrics
+        if not m:
+            continue
+
+        period = f"{m.start_date} - {m.end_date}"
+        total_trades += m.total_trades
+        total_pnl += m.total_pnl
+        wins += m.winning_trades
+        losses += m.losing_trades
+        if m.max_drawdown_pct > max_dd_all:
+            max_dd_all = m.max_drawdown_pct
+
+        lines.append(
+            f"  {i:<8} {period:<25} {m.total_trades:>7} "
+            f"{float(m.total_return_pct):>9.2f}% {float(m.win_rate) * 100:>9.1f}% "
+            f"{float(m.max_drawdown_pct):>9.2f}%"
+        )
+
+    lines.append("")
+
+    # Aggregate statistics
+    lines.append("AGGREGATE OUT-OF-SAMPLE STATISTICS")
+    aggregate_win_rate = wins / (wins + losses) if (wins + losses) > 0 else 0
+
+    # Calculate combined return
+    # Chain the returns: (1 + r1) * (1 + r2) * ... - 1
+    combined_return = Decimal("1")
+    for result in results:
+        if result.metrics:
+            combined_return *= Decimal("1") + result.metrics.total_return_pct / 100
+    combined_return = (combined_return - 1) * 100
+
+    lines.append(f"  Total Trades:       {total_trades}")
+    lines.append(f"  Total PnL:          ${float(total_pnl):,.2f}")
+    lines.append(f"  Combined Return:    {float(combined_return):.2f}%")
+    lines.append(f"  Aggregate Win Rate: {aggregate_win_rate * 100:.1f}%")
+    lines.append(f"  Worst Window DD:    {float(max_dd_all):.2f}%")
+    lines.append("")
+
+    # Consistency analysis
+    positive_windows = sum(
+        1 for r in results if r.metrics and r.metrics.total_return_pct > 0
+    )
+    consistency_pct = positive_windows / len(results) * 100 if results else 0
+
+    lines.append("ROBUSTNESS INDICATORS")
+    lines.append(f"  Positive Windows:   {positive_windows}/{len(results)} ({consistency_pct:.0f}%)")
+
+    if consistency_pct >= 70:
+        lines.append("  Assessment:         [Strong] Strategy shows consistent edge across periods")
+    elif consistency_pct >= 50:
+        lines.append("  Assessment:         [Moderate] Strategy profitable in majority of windows")
+    else:
+        lines.append("  Assessment:         [Weak] Strategy may be overfit to specific periods")
+
+    lines.append("")
+    lines.append(f"{'=' * 70}")
+
+    return "\n".join(lines)
+
+
+def format_walk_forward_json(
+    results: list["BacktestResult"],
+    in_sample_days: int,
+    out_sample_days: int,
+) -> str:
+    """Format walk-forward results as JSON.
+
+    Args:
+        results: List of BacktestResult from each out-of-sample window
+        in_sample_days: Training period length
+        out_sample_days: Testing period length
+
+    Returns:
+        JSON string
+    """
+    def decimal_to_str(val: Decimal | None) -> str | None:
+        return str(val) if val is not None else None
+
+    strategy_name = results[0].strategy_name.split(" (Window")[0] if results else "unknown"
+
+    windows = []
+    for i, result in enumerate(results, 1):
+        m = result.metrics
+        if not m:
+            continue
+
+        windows.append({
+            "window": i,
+            "start_date": m.start_date.isoformat(),
+            "end_date": m.end_date.isoformat(),
+            "total_trades": m.total_trades,
+            "total_pnl": decimal_to_str(m.total_pnl),
+            "total_return_pct": decimal_to_str(m.total_return_pct),
+            "win_rate": decimal_to_str(m.win_rate),
+            "max_drawdown_pct": decimal_to_str(m.max_drawdown_pct),
+            "sharpe_ratio": decimal_to_str(m.sharpe_ratio),
+            "profit_factor": decimal_to_str(m.profit_factor),
+        })
+
+    # Calculate aggregates
+    total_trades = sum(w["total_trades"] for w in windows)
+    positive_windows = sum(
+        1 for r in results if r.metrics and r.metrics.total_return_pct > 0
+    )
+
+    # Combined return
+    combined_return = Decimal("1")
+    for result in results:
+        if result.metrics:
+            combined_return *= Decimal("1") + result.metrics.total_return_pct / 100
+    combined_return = (combined_return - 1) * 100
+
+    data = {
+        "strategy": strategy_name,
+        "config": {
+            "in_sample_days": in_sample_days,
+            "out_sample_days": out_sample_days,
+            "num_windows": len(results),
+        },
+        "windows": windows,
+        "aggregate": {
+            "total_trades": total_trades,
+            "combined_return_pct": decimal_to_str(combined_return),
+            "positive_windows": positive_windows,
+            "consistency_pct": round(positive_windows / len(results) * 100, 1) if results else 0,
+        },
+    }
+
+    return json.dumps(data, indent=2)

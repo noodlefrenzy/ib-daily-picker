@@ -1,5 +1,7 @@
 # IB Daily Picker
 
+> **Disclaimer:** This software is for educational and research purposes only. It is not financial advice. Trading stocks and options involves substantial risk of loss. Past performance of any trading strategy does not guarantee future results. The authors assume no liability for financial losses incurred using this software. Always consult a qualified financial advisor before making investment decisions.
+
 A Python CLI tool that identifies promising stock trading opportunities by correlating market price data with options flow signals from Unusual Whales, applying configurable trading strategies, and maintaining a journal for backtesting.
 
 ## Features
@@ -503,6 +505,20 @@ The dual-database architecture optimizes for:
 - Pay-per-use API
 - Register at: https://console.anthropic.com/
 - Used for natural language to strategy conversion
+
+## Disclaimer
+
+**This software is provided for educational and research purposes only.**
+
+- This is NOT financial advice. The authors are not licensed financial advisors.
+- Trading stocks and options involves substantial risk of loss and is not suitable for all investors.
+- Past performance of any trading strategy, including backtests, does NOT guarantee future results.
+- Backtests are inherently limited - they cannot account for slippage, liquidity, market impact, or changing market conditions.
+- The authors make no representations about the accuracy, reliability, or completeness of any data or analysis.
+- You are solely responsible for your own trading decisions and any resulting gains or losses.
+- Always consult a qualified financial advisor before making investment decisions.
+
+**By using this software, you acknowledge that you understand these risks and agree that the authors bear no liability for any financial losses you may incur.**
 
 ## License
 

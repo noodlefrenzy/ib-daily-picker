@@ -9,7 +9,7 @@ description = "A Python CLI tool that identifies promising stock opportunities b
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
-authors = [{ name = "Developer" }]
+authors = [{ name = "noodlefrenzy" }]
 keywords = ["stocks", "trading", "options", "flow", "analysis"]
 classifiers = [
     "Development Status :: 3 - Alpha",

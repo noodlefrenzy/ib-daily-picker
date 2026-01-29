@@ -142,7 +142,9 @@ class TestWalkForwardConsoleOutput:
         """Console output should show aggregate statistics."""
         today = date.today()
         results = [
-            create_mock_result(1, today - timedelta(days=126), today - timedelta(days=64), Decimal("5.0")),
+            create_mock_result(
+                1, today - timedelta(days=126), today - timedelta(days=64), Decimal("5.0")
+            ),
             create_mock_result(2, today - timedelta(days=63), today, Decimal("3.0")),
         ]
 
@@ -171,8 +173,12 @@ class TestWalkForwardConsoleOutput:
         today = date.today()
         # 4 out of 5 positive = 80%
         results = [
-            create_mock_result(i, today - timedelta(days=63 * (5 - i)), today - timedelta(days=63 * (4 - i)),
-                             Decimal("5.0") if i < 4 else Decimal("-1.0"))
+            create_mock_result(
+                i,
+                today - timedelta(days=63 * (5 - i)),
+                today - timedelta(days=63 * (4 - i)),
+                Decimal("5.0") if i < 4 else Decimal("-1.0"),
+            )
             for i in range(5)
         ]
 
@@ -185,8 +191,12 @@ class TestWalkForwardConsoleOutput:
         today = date.today()
         # 1 out of 5 positive = 20%
         results = [
-            create_mock_result(i, today - timedelta(days=63 * (5 - i)), today - timedelta(days=63 * (4 - i)),
-                             Decimal("-2.0") if i < 4 else Decimal("5.0"))
+            create_mock_result(
+                i,
+                today - timedelta(days=63 * (5 - i)),
+                today - timedelta(days=63 * (4 - i)),
+                Decimal("-2.0") if i < 4 else Decimal("5.0"),
+            )
             for i in range(5)
         ]
 
@@ -245,7 +255,9 @@ class TestWalkForwardJsonOutput:
         """JSON should contain individual window results."""
         today = date.today()
         results = [
-            create_mock_result(1, today - timedelta(days=126), today - timedelta(days=64), Decimal("3.5")),
+            create_mock_result(
+                1, today - timedelta(days=126), today - timedelta(days=64), Decimal("3.5")
+            ),
             create_mock_result(2, today - timedelta(days=63), today, Decimal("2.0")),
         ]
 
@@ -277,7 +289,9 @@ class TestWalkForwardJsonOutput:
         today = date.today()
         # Two 10% returns should compound to ~21%
         results = [
-            create_mock_result(1, today - timedelta(days=126), today - timedelta(days=64), Decimal("10.0")),
+            create_mock_result(
+                1, today - timedelta(days=126), today - timedelta(days=64), Decimal("10.0")
+            ),
             create_mock_result(2, today - timedelta(days=63), today, Decimal("10.0")),
         ]
 
@@ -297,7 +311,9 @@ class TestWalkForwardAggregation:
         today = date.today()
         # 5% then -5% should be ~0.25% loss (not 0%)
         results = [
-            create_mock_result(1, today - timedelta(days=126), today - timedelta(days=64), Decimal("5.0")),
+            create_mock_result(
+                1, today - timedelta(days=126), today - timedelta(days=64), Decimal("5.0")
+            ),
             create_mock_result(2, today - timedelta(days=63), today, Decimal("-5.0")),
         ]
 
@@ -316,8 +332,12 @@ class TestWalkForwardAggregation:
         """Should count positive windows accurately."""
         today = date.today()
         results = [
-            create_mock_result(1, today - timedelta(days=189), today - timedelta(days=127), Decimal("5.0")),  # positive
-            create_mock_result(2, today - timedelta(days=126), today - timedelta(days=64), Decimal("-2.0")),  # negative
+            create_mock_result(
+                1, today - timedelta(days=189), today - timedelta(days=127), Decimal("5.0")
+            ),  # positive
+            create_mock_result(
+                2, today - timedelta(days=126), today - timedelta(days=64), Decimal("-2.0")
+            ),  # negative
             create_mock_result(3, today - timedelta(days=63), today, Decimal("3.0")),  # positive
         ]
 
@@ -350,7 +370,12 @@ class TestWalkForwardEdgeCases:
         """All positive windows should show 100% consistency."""
         today = date.today()
         results = [
-            create_mock_result(i, today - timedelta(days=63 * (3 - i)), today - timedelta(days=63 * (2 - i)), Decimal("5.0"))
+            create_mock_result(
+                i,
+                today - timedelta(days=63 * (3 - i)),
+                today - timedelta(days=63 * (2 - i)),
+                Decimal("5.0"),
+            )
             for i in range(3)
         ]
 
@@ -364,7 +389,12 @@ class TestWalkForwardEdgeCases:
         """All negative windows should show 0% consistency."""
         today = date.today()
         results = [
-            create_mock_result(i, today - timedelta(days=63 * (3 - i)), today - timedelta(days=63 * (2 - i)), Decimal("-2.0"))
+            create_mock_result(
+                i,
+                today - timedelta(days=63 * (3 - i)),
+                today - timedelta(days=63 * (2 - i)),
+                Decimal("-2.0"),
+            )
             for i in range(3)
         ]
 

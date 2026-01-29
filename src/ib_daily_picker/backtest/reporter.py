@@ -354,11 +354,15 @@ def format_monte_carlo_console(result: "MonteCarloResult") -> str:
 
     # Metric distributions table
     lines.append("METRIC DISTRIBUTIONS")
-    lines.append(_format_distribution_table([
-        result.total_return_dist,
-        result.max_drawdown_dist,
-        result.win_rate_dist,
-    ]))
+    lines.append(
+        _format_distribution_table(
+            [
+                result.total_return_dist,
+                result.max_drawdown_dist,
+                result.win_rate_dist,
+            ]
+        )
+    )
     lines.append("")
 
     # Optional metrics
@@ -379,14 +383,13 @@ def format_monte_carlo_console(result: "MonteCarloResult") -> str:
     lines.append("")
 
     # Base vs median comparison
-    base_return = result.base_result.metrics.total_return_pct if result.base_result.metrics else Decimal("0")
+    base_return = (
+        result.base_result.metrics.total_return_pct if result.base_result.metrics else Decimal("0")
+    )
     median_return = result.total_return_dist.p50
     diff = base_return - median_return
     comparison = "above" if diff > 0 else "below" if diff < 0 else "at"
-    lines.append(
-        f"Base Result vs Median: {diff:+.2f}% "
-        f"(base performed {comparison} median)"
-    )
+    lines.append(f"Base Result vs Median: {diff:+.2f}% (base performed {comparison} median)")
 
     lines.append("")
     lines.append(f"{'=' * 60}")
@@ -458,6 +461,7 @@ def format_monte_carlo_json(result: "MonteCarloResult") -> str:
     Returns:
         JSON string
     """
+
     def decimal_to_str(val: Decimal | None) -> str | None:
         return str(val) if val is not None else None
 
@@ -512,14 +516,10 @@ def format_monte_carlo_json(result: "MonteCarloResult") -> str:
         "simulation_returns": [decimal_to_str(r) for r in result.simulation_returns],
         "base_result": {
             "total_return_pct": decimal_to_str(
-                result.base_result.metrics.total_return_pct
-                if result.base_result.metrics
-                else None
+                result.base_result.metrics.total_return_pct if result.base_result.metrics else None
             ),
             "max_drawdown_pct": decimal_to_str(
-                result.base_result.metrics.max_drawdown_pct
-                if result.base_result.metrics
-                else None
+                result.base_result.metrics.max_drawdown_pct if result.base_result.metrics else None
             ),
             "total_trades": result.base_result.metrics.total_trades
             if result.base_result.metrics
@@ -563,7 +563,9 @@ def format_walk_forward_console(
 
     # Window-by-window summary table
     lines.append("OUT-OF-SAMPLE RESULTS BY WINDOW")
-    lines.append(f"  {'Window':<8} {'Period':<25} {'Trades':>7} {'Return':>10} {'Win Rate':>10} {'Max DD':>10}")
+    lines.append(
+        f"  {'Window':<8} {'Period':<25} {'Trades':>7} {'Return':>10} {'Win Rate':>10} {'Max DD':>10}"
+    )
     lines.append(f"  {'-' * 8} {'-' * 25} {'-' * 7} {'-' * 10} {'-' * 10} {'-' * 10}")
 
     total_trades = 0
@@ -613,13 +615,13 @@ def format_walk_forward_console(
     lines.append("")
 
     # Consistency analysis
-    positive_windows = sum(
-        1 for r in results if r.metrics and r.metrics.total_return_pct > 0
-    )
+    positive_windows = sum(1 for r in results if r.metrics and r.metrics.total_return_pct > 0)
     consistency_pct = positive_windows / len(results) * 100 if results else 0
 
     lines.append("ROBUSTNESS INDICATORS")
-    lines.append(f"  Positive Windows:   {positive_windows}/{len(results)} ({consistency_pct:.0f}%)")
+    lines.append(
+        f"  Positive Windows:   {positive_windows}/{len(results)} ({consistency_pct:.0f}%)"
+    )
 
     if consistency_pct >= 70:
         lines.append("  Assessment:         [Strong] Strategy shows consistent edge across periods")
@@ -649,6 +651,7 @@ def format_walk_forward_json(
     Returns:
         JSON string
     """
+
     def decimal_to_str(val: Decimal | None) -> str | None:
         return str(val) if val is not None else None
 
@@ -660,24 +663,24 @@ def format_walk_forward_json(
         if not m:
             continue
 
-        windows.append({
-            "window": i,
-            "start_date": m.start_date.isoformat(),
-            "end_date": m.end_date.isoformat(),
-            "total_trades": m.total_trades,
-            "total_pnl": decimal_to_str(m.total_pnl),
-            "total_return_pct": decimal_to_str(m.total_return_pct),
-            "win_rate": decimal_to_str(m.win_rate),
-            "max_drawdown_pct": decimal_to_str(m.max_drawdown_pct),
-            "sharpe_ratio": decimal_to_str(m.sharpe_ratio),
-            "profit_factor": decimal_to_str(m.profit_factor),
-        })
+        windows.append(
+            {
+                "window": i,
+                "start_date": m.start_date.isoformat(),
+                "end_date": m.end_date.isoformat(),
+                "total_trades": m.total_trades,
+                "total_pnl": decimal_to_str(m.total_pnl),
+                "total_return_pct": decimal_to_str(m.total_return_pct),
+                "win_rate": decimal_to_str(m.win_rate),
+                "max_drawdown_pct": decimal_to_str(m.max_drawdown_pct),
+                "sharpe_ratio": decimal_to_str(m.sharpe_ratio),
+                "profit_factor": decimal_to_str(m.profit_factor),
+            }
+        )
 
     # Calculate aggregates
     total_trades = sum(w["total_trades"] for w in windows)
-    positive_windows = sum(
-        1 for r in results if r.metrics and r.metrics.total_return_pct > 0
-    )
+    positive_windows = sum(1 for r in results if r.metrics and r.metrics.total_return_pct > 0)
 
     # Combined return
     combined_return = Decimal("1")

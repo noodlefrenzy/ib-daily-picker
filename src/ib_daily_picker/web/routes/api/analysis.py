@@ -98,9 +98,7 @@ async def run_analysis(
                 SignalResult(
                     symbol=result.symbol,
                     signal_type="buy",  # Entry signals are buy signals
-                    entry_price=str(result.current_price)
-                    if result.current_price
-                    else None,
+                    entry_price=str(result.current_price) if result.current_price else None,
                     stop_loss=str(result.suggested_stop_loss)
                     if result.suggested_stop_loss
                     else None,

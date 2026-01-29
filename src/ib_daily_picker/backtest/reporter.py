@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ib_daily_picker.backtest.metrics import BacktestMetrics
+    from ib_daily_picker.backtest.monte_carlo import MonteCarloResult, PercentileDistribution
     from ib_daily_picker.backtest.runner import BacktestResult
 
 
@@ -311,3 +312,219 @@ def export_equity_curve_csv(result: "BacktestResult") -> str:
         )
 
     return output.getvalue()
+
+
+def format_monte_carlo_console(result: "MonteCarloResult") -> str:
+    """Format Monte Carlo result for console output.
+
+    Args:
+        result: MonteCarloResult from simulation
+
+    Returns:
+        Formatted string for console display
+    """
+    lines = []
+
+    lines.append(f"{'=' * 60}")
+    lines.append(f"MONTE CARLO RESULTS ({result.num_simulations} simulations)")
+    lines.append(f"Strategy: {result.strategy_name}")
+    lines.append(f"{'=' * 60}")
+    lines.append("")
+
+    # Configuration summary
+    config = result.config
+    config_parts = []
+    if config.shuffle_trades:
+        config_parts.append("shuffle")
+    if config.trade_removal:
+        config_parts.append(f"removal({config.trade_removal_pct:.0%})")
+    if config.execution_variance:
+        config_parts.append(f"slippage({config.slippage_std_pct:.2%})")
+    lines.append(f"Transformations: {', '.join(config_parts) if config_parts else 'none'}")
+    if config.random_seed is not None:
+        lines.append(f"Random Seed: {config.random_seed}")
+    lines.append("")
+
+    # Risk assessment
+    lines.append("RISK ASSESSMENT")
+    lines.append(f"  Probability of Loss:  {float(result.probability_of_loss) * 100:.1f}%")
+    lines.append(f"  Probability of Ruin:  {float(result.probability_of_ruin) * 100:.1f}%")
+    lines.append(f"  Expected Worst DD:    {result.max_drawdown_dist.p95:.1f}%")
+    lines.append("")
+
+    # Metric distributions table
+    lines.append("METRIC DISTRIBUTIONS")
+    lines.append(_format_distribution_table([
+        result.total_return_dist,
+        result.max_drawdown_dist,
+        result.win_rate_dist,
+    ]))
+    lines.append("")
+
+    # Optional metrics
+    if result.sharpe_ratio_dist:
+        lines.append(
+            f"  Sharpe Ratio:    5th={result.sharpe_ratio_dist.p5:.2f}  "
+            f"50th={result.sharpe_ratio_dist.p50:.2f}  "
+            f"95th={result.sharpe_ratio_dist.p95:.2f}"
+        )
+
+    if result.profit_factor_dist:
+        lines.append(
+            f"  Profit Factor:   5th={result.profit_factor_dist.p5:.2f}  "
+            f"50th={result.profit_factor_dist.p50:.2f}  "
+            f"95th={result.profit_factor_dist.p95:.2f}"
+        )
+
+    lines.append("")
+
+    # Base vs median comparison
+    base_return = result.base_result.metrics.total_return_pct if result.base_result.metrics else Decimal("0")
+    median_return = result.total_return_dist.p50
+    diff = base_return - median_return
+    comparison = "above" if diff > 0 else "below" if diff < 0 else "at"
+    lines.append(
+        f"Base Result vs Median: {diff:+.2f}% "
+        f"(base performed {comparison} median)"
+    )
+
+    lines.append("")
+    lines.append(f"{'=' * 60}")
+
+    return "\n".join(lines)
+
+
+def _format_distribution_table(distributions: list["PercentileDistribution"]) -> str:
+    """Format a table of percentile distributions.
+
+    Args:
+        distributions: List of PercentileDistribution objects
+
+    Returns:
+        Formatted table string
+    """
+    # Header
+    header = f"  {'Metric':<14} {'5th':>8} {'25th':>8} {'50th':>8} {'75th':>8} {'95th':>8}"
+    separator = f"  {'-' * 14} {'-' * 8} {'-' * 8} {'-' * 8} {'-' * 8} {'-' * 8}"
+
+    lines = [header, separator]
+
+    # Format metric name for display
+    name_map = {
+        "total_return_pct": "Total Return",
+        "max_drawdown_pct": "Max Drawdown",
+        "win_rate": "Win Rate",
+        "sharpe_ratio": "Sharpe Ratio",
+        "profit_factor": "Profit Factor",
+    }
+
+    for dist in distributions:
+        name = name_map.get(dist.metric_name, dist.metric_name)
+
+        # Format values with appropriate precision
+        if dist.metric_name in ("total_return_pct", "max_drawdown_pct", "win_rate"):
+            # Percentages
+            values = [
+                f"{float(dist.p5):.1f}%",
+                f"{float(dist.p25):.1f}%",
+                f"{float(dist.p50):.1f}%",
+                f"{float(dist.p75):.1f}%",
+                f"{float(dist.p95):.1f}%",
+            ]
+        else:
+            # Ratios
+            values = [
+                f"{float(dist.p5):.2f}",
+                f"{float(dist.p25):.2f}",
+                f"{float(dist.p50):.2f}",
+                f"{float(dist.p75):.2f}",
+                f"{float(dist.p95):.2f}",
+            ]
+
+        lines.append(
+            f"  {name:<14} {values[0]:>8} {values[1]:>8} {values[2]:>8} "
+            f"{values[3]:>8} {values[4]:>8}"
+        )
+
+    return "\n".join(lines)
+
+
+def format_monte_carlo_json(result: "MonteCarloResult") -> str:
+    """Format Monte Carlo result as JSON.
+
+    Args:
+        result: MonteCarloResult from simulation
+
+    Returns:
+        JSON string
+    """
+    def decimal_to_str(val: Decimal | None) -> str | None:
+        return str(val) if val is not None else None
+
+    def dist_to_dict(dist: "PercentileDistribution | None") -> dict | None:
+        if dist is None:
+            return None
+        return {
+            "metric_name": dist.metric_name,
+            "p5": decimal_to_str(dist.p5),
+            "p25": decimal_to_str(dist.p25),
+            "p50": decimal_to_str(dist.p50),
+            "p75": decimal_to_str(dist.p75),
+            "p95": decimal_to_str(dist.p95),
+            "mean": decimal_to_str(dist.mean),
+            "std_dev": decimal_to_str(dist.std_dev),
+        }
+
+    data = {
+        "strategy": result.strategy_name,
+        "config": {
+            "num_simulations": result.config.num_simulations,
+            "random_seed": result.config.random_seed,
+            "shuffle_trades": result.config.shuffle_trades,
+            "trade_removal": result.config.trade_removal,
+            "trade_removal_pct": decimal_to_str(result.config.trade_removal_pct),
+            "execution_variance": result.config.execution_variance,
+            "slippage_std_pct": decimal_to_str(result.config.slippage_std_pct),
+        },
+        "num_simulations": result.num_simulations,
+        "risk_assessment": {
+            "probability_of_loss": decimal_to_str(result.probability_of_loss),
+            "probability_of_ruin": decimal_to_str(result.probability_of_ruin),
+        },
+        "distributions": {
+            "total_return": dist_to_dict(result.total_return_dist),
+            "max_drawdown": dist_to_dict(result.max_drawdown_dist),
+            "win_rate": dist_to_dict(result.win_rate_dist),
+            "sharpe_ratio": dist_to_dict(result.sharpe_ratio_dist),
+            "profit_factor": dist_to_dict(result.profit_factor_dist),
+        },
+        "equity_cone": [
+            {
+                "date": point.date.isoformat(),
+                "p5": decimal_to_str(point.p5),
+                "p25": decimal_to_str(point.p25),
+                "median": decimal_to_str(point.median),
+                "p75": decimal_to_str(point.p75),
+                "p95": decimal_to_str(point.p95),
+            }
+            for point in result.equity_cone
+        ],
+        "simulation_returns": [decimal_to_str(r) for r in result.simulation_returns],
+        "base_result": {
+            "total_return_pct": decimal_to_str(
+                result.base_result.metrics.total_return_pct
+                if result.base_result.metrics
+                else None
+            ),
+            "max_drawdown_pct": decimal_to_str(
+                result.base_result.metrics.max_drawdown_pct
+                if result.base_result.metrics
+                else None
+            ),
+            "total_trades": result.base_result.metrics.total_trades
+            if result.base_result.metrics
+            else 0,
+        },
+    }
+
+    return json.dumps(data, indent=2)

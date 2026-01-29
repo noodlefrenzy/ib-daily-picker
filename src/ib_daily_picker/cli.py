@@ -1883,6 +1883,165 @@ def backtest_run(
         console.print(format_console_report(result))
 
 
+@backtest_app.command("monte-carlo")
+def backtest_monte_carlo(
+    strategy_name: Annotated[
+        str,
+        typer.Argument(help="Strategy name to backtest"),
+    ],
+    start_date: Annotated[
+        str,
+        typer.Option("--from", help="Start date (YYYY-MM-DD)"),
+    ],
+    end_date: Annotated[
+        str,
+        typer.Option("--to", help="End date (YYYY-MM-DD)"),
+    ],
+    tickers: Annotated[
+        Optional[str],
+        typer.Option("--tickers", "-t", help="Comma-separated tickers"),
+    ] = None,
+    initial_capital: Annotated[
+        float,
+        typer.Option("--capital", help="Initial capital"),
+    ] = 100000.0,
+    num_sims: Annotated[
+        int,
+        typer.Option("--sims", "-n", help="Number of simulations"),
+    ] = 1000,
+    shuffle: Annotated[
+        bool,
+        typer.Option("--shuffle/--no-shuffle", help="Randomize trade sequence"),
+    ] = True,
+    removal: Annotated[
+        bool,
+        typer.Option("--removal/--no-removal", help="Simulate missed entries"),
+    ] = False,
+    removal_pct: Annotated[
+        float,
+        typer.Option("--removal-pct", help="Percentage of trades to remove (0.10 = 10%)"),
+    ] = 0.10,
+    slippage: Annotated[
+        bool,
+        typer.Option("--slippage/--no-slippage", help="Add execution variance"),
+    ] = False,
+    slippage_std: Annotated[
+        float,
+        typer.Option("--slippage-std", help="Slippage std deviation (0.002 = 0.2%)"),
+    ] = 0.002,
+    seed: Annotated[
+        Optional[int],
+        typer.Option("--seed", help="Random seed for reproducibility"),
+    ] = None,
+    json_output: Annotated[
+        bool,
+        typer.Option("--json", help="Output as JSON"),
+    ] = False,
+) -> None:
+    """Run Monte Carlo simulation on a backtest for robustness testing.
+
+    Monte Carlo shows "what could happen" - the range of possible outcomes
+    across thousands of scenarios. This helps separate genuinely robust
+    strategies from lucky ones.
+
+    Examples:
+        ib-picker backtest monte-carlo momentum_rsi --from 2024-01-01 --to 2024-06-30
+        ib-picker backtest monte-carlo strategy_name --sims 500 --seed 42
+        ib-picker backtest monte-carlo strategy_name --removal --removal-pct 0.15
+    """
+    from datetime import date as date_type
+    from decimal import Decimal
+
+    from rich.progress import Progress, SpinnerColumn, TextColumn
+
+    from ib_daily_picker.analysis import get_strategy_loader
+    from ib_daily_picker.backtest import (
+        BacktestConfig,
+        BacktestRunner,
+        MonteCarloConfig,
+        MonteCarloRunner,
+        format_monte_carlo_console,
+        format_monte_carlo_json,
+    )
+    from ib_daily_picker.store.database import get_db_manager
+
+    settings = get_settings()
+
+    # Load strategy
+    loader = get_strategy_loader()
+    try:
+        strategy = loader.load(strategy_name)
+    except FileNotFoundError:
+        err_console.print(f"[red]Strategy not found: {strategy_name}[/red]")
+        raise typer.Exit(1)
+
+    # Get ticker list
+    ticker_list = [
+        t.strip().upper()
+        for t in (tickers.split(",") if tickers else settings.basket.default_tickers)
+    ]
+
+    console.print(f"[cyan]Monte Carlo Simulation: {strategy.name}[/cyan]")
+    console.print(f"  Period: {start_date} to {end_date}")
+    console.print(f"  Tickers: {', '.join(ticker_list[:5])}{'...' if len(ticker_list) > 5 else ''}")
+    console.print(f"  Simulations: {num_sims}")
+
+    # Build backtest config
+    bt_config = BacktestConfig(
+        start_date=date_type.fromisoformat(start_date),
+        end_date=date_type.fromisoformat(end_date),
+        initial_capital=Decimal(str(initial_capital)),
+    )
+
+    # Build Monte Carlo config
+    mc_config = MonteCarloConfig(
+        num_simulations=num_sims,
+        random_seed=seed,
+        shuffle_trades=shuffle,
+        trade_removal=removal,
+        trade_removal_pct=Decimal(str(removal_pct)),
+        execution_variance=slippage,
+        slippage_std_pct=Decimal(str(slippage_std)),
+    )
+
+    db = get_db_manager()
+    runner = BacktestRunner(db)
+
+    # First run the base backtest
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+    ) as progress:
+        task = progress.add_task("[cyan]Running base backtest...", total=None)
+        base_result = runner.run(strategy, ticker_list, bt_config)
+
+        if not base_result.trades:
+            err_console.print("[red]Base backtest produced no trades[/red]")
+            raise typer.Exit(1)
+
+        if not base_result.metrics:
+            err_console.print("[red]Base backtest produced no metrics[/red]")
+            raise typer.Exit(1)
+
+        progress.update(task, description=f"[cyan]Running {num_sims} Monte Carlo simulations...")
+
+        # Run Monte Carlo
+        mc_runner = MonteCarloRunner(mc_config)
+        try:
+            mc_result = mc_runner.run(base_result)
+        except ValueError as e:
+            err_console.print(f"[red]Monte Carlo failed: {e}[/red]")
+            raise typer.Exit(1)
+
+    # Output results
+    if json_output:
+        console.print(format_monte_carlo_json(mc_result))
+    else:
+        console.print()
+        console.print(format_monte_carlo_console(mc_result))
+
+
 @backtest_app.command("compare")
 def backtest_compare(
     strategies: Annotated[

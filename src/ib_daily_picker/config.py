@@ -2,7 +2,7 @@
 Configuration management using pydantic-settings.
 
 PURPOSE: Centralized configuration from environment, TOML files, and CLI
-DEPENDENCIES: pydantic-settings, toml
+DEPENDENCIES: pydantic-settings, tomllib (stdlib), tomli-w
 
 ARCHITECTURE NOTES:
 Configuration hierarchy (highest to lowest priority):
@@ -14,11 +14,12 @@ Configuration hierarchy (highest to lowest priority):
 
 from __future__ import annotations
 
+import tomllib
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
-import toml
+import tomli_w
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -263,7 +264,8 @@ class Settings(BaseSettings):
 
         toml_config: dict[str, Any] = {}
         if config_path.exists():
-            toml_config = toml.load(config_path)
+            with open(config_path, "rb") as f:
+                toml_config = tomllib.load(f)
 
         return cls(**toml_config)
 
@@ -296,8 +298,8 @@ class Settings(BaseSettings):
 
         config_dict = path_to_str(config_dict)
 
-        with open(config_path, "w") as f:
-            toml.dump(config_dict, f)
+        with open(config_path, "wb") as f:
+            tomli_w.dump(config_dict, f)
 
 
 # Global settings instance (lazy loaded)

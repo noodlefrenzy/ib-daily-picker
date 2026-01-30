@@ -122,3 +122,18 @@ module = [
     "azure.*",
 ]
 ignore_missing_imports = true
+
+[tool.coverage.run]
+source = ["src/ib_daily_picker"]
+omit = [
+    "src/ib_daily_picker/__main__.py",
+    "src/ib_daily_picker/cli.py",
+    "src/ib_daily_picker/discord/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+]

@@ -57,9 +57,7 @@ def mock_settings_no_token() -> Settings:
 class TestIBPickerBot:
     """Tests for IBPickerBot class."""
 
-    def test_bot_creation_with_valid_settings(
-        self, mock_settings: Settings
-    ) -> None:
+    def test_bot_creation_with_valid_settings(self, mock_settings: Settings) -> None:
         """Bot should be created with valid settings."""
         bot = IBPickerBot(mock_settings)
 
@@ -79,9 +77,7 @@ class TestIBPickerBot:
         # Verify message_content is disabled (not needed for slash commands)
         assert not bot.intents.message_content
 
-    def test_run_bot_raises_without_token(
-        self, mock_settings_no_token: Settings
-    ) -> None:
+    def test_run_bot_raises_without_token(self, mock_settings_no_token: Settings) -> None:
         """run_bot should raise ValueError without a token."""
         bot = IBPickerBot(mock_settings_no_token)
 
@@ -93,9 +89,7 @@ class TestCreateBot:
     """Tests for create_bot async factory."""
 
     @pytest.mark.asyncio
-    async def test_create_bot_returns_instance(
-        self, mock_settings: Settings
-    ) -> None:
+    async def test_create_bot_returns_instance(self, mock_settings: Settings) -> None:
         """create_bot should return a configured bot instance."""
         bot = await create_bot(mock_settings)
 
@@ -126,9 +120,7 @@ class TestBotSetup:
         assert "ib_daily_picker.discord.cogs.core" in call_args
 
     @pytest.mark.asyncio
-    async def test_setup_hook_syncs_to_guild_when_configured(
-        self, mock_settings: Settings
-    ) -> None:
+    async def test_setup_hook_syncs_to_guild_when_configured(self, mock_settings: Settings) -> None:
         """setup_hook should sync to specific guild in dev mode."""
         bot = IBPickerBot(mock_settings)
 

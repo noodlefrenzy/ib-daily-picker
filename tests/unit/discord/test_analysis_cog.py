@@ -92,26 +92,20 @@ class TestRecommendationEmbed:
             generated_at=datetime(2024, 1, 15, 10, 30, 0),
         )
 
-    def test_creates_embed_with_correct_color(
-        self, sample_recommendation: Recommendation
-    ) -> None:
+    def test_creates_embed_with_correct_color(self, sample_recommendation: Recommendation) -> None:
         """Embed should use correct color for signal type."""
         embed = create_recommendation_embed(sample_recommendation)
 
         assert embed.color == SIGNAL_COLORS[SignalType.BUY]
 
-    def test_includes_symbol_in_title(
-        self, sample_recommendation: Recommendation
-    ) -> None:
+    def test_includes_symbol_in_title(self, sample_recommendation: Recommendation) -> None:
         """Embed title should include symbol."""
         embed = create_recommendation_embed(sample_recommendation)
 
         assert "AAPL" in embed.title
         assert "BUY" in embed.title
 
-    def test_includes_price_targets(
-        self, sample_recommendation: Recommendation
-    ) -> None:
+    def test_includes_price_targets(self, sample_recommendation: Recommendation) -> None:
         """Embed should include entry, stop, and target."""
         embed = create_recommendation_embed(sample_recommendation)
 
@@ -120,18 +114,14 @@ class TestRecommendationEmbed:
         assert "Stop Loss" in field_names
         assert "Target" in field_names
 
-    def test_includes_risk_reward(
-        self, sample_recommendation: Recommendation
-    ) -> None:
+    def test_includes_risk_reward(self, sample_recommendation: Recommendation) -> None:
         """Embed should include risk/reward ratio."""
         embed = create_recommendation_embed(sample_recommendation)
 
         field_names = [f.name for f in embed.fields]
         assert "Risk/Reward" in field_names
 
-    def test_includes_strategy_in_footer(
-        self, sample_recommendation: Recommendation
-    ) -> None:
+    def test_includes_strategy_in_footer(self, sample_recommendation: Recommendation) -> None:
         """Embed footer should show strategy name."""
         embed = create_recommendation_embed(sample_recommendation)
 
@@ -177,17 +167,13 @@ class TestSignalsListEmbed:
             generated_at=datetime(2024, 1, 15, 10, 0, 0),
         )
 
-    def test_creates_embed_with_counts(
-        self, sample_batch: RecommendationBatch
-    ) -> None:
+    def test_creates_embed_with_counts(self, sample_batch: RecommendationBatch) -> None:
         """Embed should show total and actionable counts."""
         embed = create_signals_list_embed(sample_batch)
 
         assert "3" in embed.description
 
-    def test_groups_by_signal_type(
-        self, sample_batch: RecommendationBatch
-    ) -> None:
+    def test_groups_by_signal_type(self, sample_batch: RecommendationBatch) -> None:
         """Embed should group signals by type."""
         embed = create_signals_list_embed(sample_batch)
 
@@ -195,9 +181,7 @@ class TestSignalsListEmbed:
         assert any("BUY" in name for name in field_names)
         assert any("SELL" in name for name in field_names)
 
-    def test_includes_strategy_in_footer(
-        self, sample_batch: RecommendationBatch
-    ) -> None:
+    def test_includes_strategy_in_footer(self, sample_batch: RecommendationBatch) -> None:
         """Embed footer should show strategy if provided."""
         embed = create_signals_list_embed(sample_batch)
 
@@ -311,13 +295,9 @@ class TestAnalysisCog:
 
         cog = AnalysisCog(mock_bot)
 
-        with patch(
-            "ib_daily_picker.store.database.get_db_manager"
-        ) as mock_db:
+        with patch("ib_daily_picker.store.database.get_db_manager") as mock_db:
             mock_db.return_value = MagicMock()
-            with patch(
-                "ib_daily_picker.store.repositories.RecommendationRepository"
-            ) as mock_repo:
+            with patch("ib_daily_picker.store.repositories.RecommendationRepository") as mock_repo:
                 mock_repo_instance = MagicMock()
                 mock_repo_instance.get_pending.return_value = []
                 mock_repo.return_value = mock_repo_instance
@@ -335,13 +315,9 @@ class TestAnalysisCog:
 
         cog = AnalysisCog(mock_bot)
 
-        with patch(
-            "ib_daily_picker.store.database.get_db_manager"
-        ) as mock_db:
+        with patch("ib_daily_picker.store.database.get_db_manager") as mock_db:
             mock_db.return_value = MagicMock()
-            with patch(
-                "ib_daily_picker.store.repositories.RecommendationRepository"
-            ) as mock_repo:
+            with patch("ib_daily_picker.store.repositories.RecommendationRepository") as mock_repo:
                 mock_repo_instance = MagicMock()
                 mock_repo_instance.get_pending.return_value = []
                 mock_repo.return_value = mock_repo_instance

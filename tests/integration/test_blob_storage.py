@@ -45,9 +45,7 @@ class TestBlobStorageManager:
         with tempfile.TemporaryDirectory() as tmpdir:
             yield Path(tmpdir)
 
-    def test_upload_file(
-        self, mock_blob_service: MagicMock, temp_dir: Path
-    ) -> None:
+    def test_upload_file(self, mock_blob_service: MagicMock, temp_dir: Path) -> None:
         """Should upload local file to blob storage."""
         from ib_daily_picker.discord.storage import BlobStorageManager
 
@@ -72,9 +70,7 @@ class TestBlobStorageManager:
         mock_blob_client = mock_container.get_blob_client.return_value
         mock_blob_client.upload_blob.assert_called_once()
 
-    def test_download_file_exists(
-        self, mock_blob_service: MagicMock, temp_dir: Path
-    ) -> None:
+    def test_download_file_exists(self, mock_blob_service: MagicMock, temp_dir: Path) -> None:
         """Should download blob to local file."""
         from ib_daily_picker.discord.storage import BlobStorageManager
 
@@ -103,9 +99,7 @@ class TestBlobStorageManager:
         assert result is True
         # File should be created (though content is from mock)
 
-    def test_download_file_not_exists(
-        self, mock_blob_service: MagicMock, temp_dir: Path
-    ) -> None:
+    def test_download_file_not_exists(self, mock_blob_service: MagicMock, temp_dir: Path) -> None:
         """Should return False when blob doesn't exist."""
         from ib_daily_picker.discord.storage import BlobStorageManager
 
@@ -130,9 +124,7 @@ class TestBlobStorageManager:
 
         assert result is False
 
-    def test_sync_databases_download(
-        self, mock_blob_service: MagicMock, temp_dir: Path
-    ) -> None:
+    def test_sync_databases_download(self, mock_blob_service: MagicMock, temp_dir: Path) -> None:
         """Should sync databases by downloading from blob."""
         from ib_daily_picker.discord.storage import BlobStorageManager
 
@@ -162,9 +154,7 @@ class TestBlobStorageManager:
         assert results[duckdb_path.name] is True
         assert results[sqlite_path.name] is True
 
-    def test_sync_databases_upload(
-        self, mock_blob_service: MagicMock, temp_dir: Path
-    ) -> None:
+    def test_sync_databases_upload(self, mock_blob_service: MagicMock, temp_dir: Path) -> None:
         """Should sync databases by uploading to blob."""
         from ib_daily_picker.discord.storage import BlobStorageManager
 

@@ -59,9 +59,7 @@ class BlobStorageManager:
 
         if self._connection_string:
             # Use connection string (local development)
-            self._client = BlobServiceClient.from_connection_string(
-                self._connection_string
-            )
+            self._client = BlobServiceClient.from_connection_string(self._connection_string)
             logger.info("Using connection string for blob storage")
         elif self._account_url:
             # Use managed identity (Azure deployment)
@@ -74,9 +72,7 @@ class BlobStorageManager:
             )
             logger.info("Using managed identity for blob storage")
         else:
-            raise ValueError(
-                "Either connection_string or account_url must be provided"
-            )
+            raise ValueError("Either connection_string or account_url must be provided")
 
         return self._client
 

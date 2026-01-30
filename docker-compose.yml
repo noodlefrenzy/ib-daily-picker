@@ -1,0 +1,57 @@
+# Docker Compose for local development and testing
+version: "3.8"
+
+services:
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ib-picker-bot
+    restart: unless-stopped
+    environment:
+      # Discord configuration (required)
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - DISCORD_GUILD_ID=${DISCORD_GUILD_ID:-}
+      - DISCORD_DAILY_CHANNEL_ID=${DISCORD_DAILY_CHANNEL_ID:-}
+      - DISCORD_DAILY_TIME=${DISCORD_DAILY_TIME:-09:30}
+      - DISCORD_DAILY_STRATEGY=${DISCORD_DAILY_STRATEGY:-example_rsi_flow}
+      # API keys
+      - IB_PICKER_UNUSUAL_WHALES_API_KEY=${IB_PICKER_UNUSUAL_WHALES_API_KEY:-}
+      - IB_PICKER_ANTHROPIC_API_KEY=${IB_PICKER_ANTHROPIC_API_KEY:-}
+      - IB_PICKER_FINNHUB_API_KEY=${IB_PICKER_FINNHUB_API_KEY:-}
+      # Azure Storage (optional, for cloud persistence)
+      - AZURE_STORAGE_CONNECTION_STRING=${AZURE_STORAGE_CONNECTION_STRING:-}
+      - AZURE_STORAGE_ACCOUNT_URL=${AZURE_STORAGE_ACCOUNT_URL:-}
+      - AZURE_STORAGE_CONTAINER=${AZURE_STORAGE_CONTAINER:-ib-picker-data}
+      # Logging
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    volumes:
+      # Persist data directory
+      - ib-picker-data:/home/appuser/.ib-picker/data
+      # Mount local strategies for development
+      - ./strategies:/home/appuser/.ib-picker/strategies:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Optional: Azurite for local Azure Storage emulation
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite
+    container_name: ib-picker-azurite
+    ports:
+      - "10000:10000"  # Blob service
+      - "10001:10001"  # Queue service
+      - "10002:10002"  # Table service
+    volumes:
+      - azurite-data:/data
+    profiles:
+      - azure-local
+
+volumes:
+  ib-picker-data:
+    driver: local
+  azurite-data:
+    driver: local

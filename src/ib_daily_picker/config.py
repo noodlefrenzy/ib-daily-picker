@@ -187,6 +187,37 @@ class BasketSettings(BaseSettings):
     )
 
 
+class DiscordSettings(BaseSettings):
+    """Discord bot configuration."""
+
+    model_config = SettingsConfigDict(env_prefix="DISCORD_")
+
+    token: str | None = Field(
+        default=None,
+        description="Discord bot token",
+    )
+    guild_id: int | None = Field(
+        default=None,
+        description="Discord guild ID for faster slash command sync (dev mode)",
+    )
+    daily_channel_id: int | None = Field(
+        default=None,
+        description="Channel ID for daily analysis posts",
+    )
+    daily_time: str = Field(
+        default="09:30",
+        description="Time for daily analysis (HH:MM in ET)",
+    )
+    daily_strategy: str = Field(
+        default="example_rsi_flow",
+        description="Strategy to use for daily analysis",
+    )
+    daily_enabled: bool = Field(
+        default=True,
+        description="Enable/disable daily scheduled analysis",
+    )
+
+
 class Settings(BaseSettings):
     """Main application settings."""
 
@@ -204,6 +235,7 @@ class Settings(BaseSettings):
     cache: CacheSettings = Field(default_factory=CacheSettings)
     risk: RiskProfile = Field(default_factory=RiskProfile)
     basket: BasketSettings = Field(default_factory=BasketSettings)
+    discord: DiscordSettings = Field(default_factory=DiscordSettings)
 
     # General settings
     config_dir: Path = Field(

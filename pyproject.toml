@@ -41,6 +41,11 @@ dependencies = [
     "fastapi>=0.109.0",
     "uvicorn[standard]>=0.27.0",
     "jinja2>=3.1.0",
+    # Discord bot dependencies
+    "discord.py>=2.3.0",
+    # Azure dependencies (optional, for cloud deployment)
+    "azure-storage-blob>=12.0.0",
+    "azure-identity>=1.15.0",
 ]
 
 [project.optional-dependencies]
@@ -113,5 +118,7 @@ module = [
     "finnhub.*",
     "duckdb.*",
     "instructor.*",
+    "discord.*",
+    "azure.*",
 ]
 ignore_missing_imports = true

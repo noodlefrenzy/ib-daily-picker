@@ -2876,5 +2876,65 @@ def serve(
     )
 
 
+# =============================================================================
+# Bot Command (Discord Bot)
+# =============================================================================
+bot_app = typer.Typer(
+    name="bot",
+    help="Discord bot commands.",
+    no_args_is_help=True,
+)
+app.add_typer(bot_app)
+
+
+@bot_app.command("run")
+def bot_run(
+    debug: Annotated[
+        bool,
+        typer.Option("--debug", "-d", help="Enable debug logging"),
+    ] = False,
+) -> None:
+    """Start the Discord bot.
+
+    The bot requires DISCORD_TOKEN environment variable to be set.
+    Optionally set DISCORD_GUILD_ID for faster slash command sync during development.
+
+    Examples:
+        ib-picker bot run
+        ib-picker bot run --debug
+    """
+    import logging
+
+    # Set up logging
+    log_level = logging.DEBUG if debug else logging.INFO
+    logging.basicConfig(
+        level=log_level,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
+
+    settings = get_settings()
+
+    if not settings.discord.token:
+        err_console.print("[red]Discord token not configured.[/red]")
+        err_console.print("Set the DISCORD_TOKEN environment variable.")
+        raise typer.Exit(1)
+
+    console.print("[cyan]Starting Discord bot...[/cyan]")
+
+    if settings.discord.guild_id:
+        console.print(f"[dim]Development mode: syncing to guild {settings.discord.guild_id}[/dim]")
+    else:
+        console.print("[dim]Production mode: syncing commands globally[/dim]")
+
+    # Ensure database is initialized
+    from ib_daily_picker.store.database import get_db_manager
+
+    get_db_manager()
+
+    from ib_daily_picker.discord import run_bot
+
+    run_bot(settings)
+
+
 if __name__ == "__main__":
     app()

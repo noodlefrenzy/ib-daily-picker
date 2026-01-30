@@ -259,6 +259,92 @@ ib-picker scan --output log                            # Simple log format for c
 30 9 * * 1-5 /path/to/ib-picker scan --output log >> ~/ib-picker-scans.log 2>&1
 ```
 
+## Discord Bot
+
+The application includes a Discord bot for running analysis commands and receiving automated daily signals.
+
+### Bot Setup
+
+1. **Create a Discord Application**
+   - Go to https://discord.com/developers/applications
+   - Click "New Application" and give it a name
+   - Go to "Bot" section and click "Add Bot"
+   - Copy the bot token
+
+2. **Configure Bot Permissions**
+   - In "OAuth2" > "URL Generator", select:
+     - Scopes: `bot`, `applications.commands`
+     - Bot Permissions: `Send Messages`, `Embed Links`, `Use Slash Commands`
+   - Use the generated URL to invite the bot to your server
+
+3. **Set Environment Variables**
+   ```bash
+   # Required
+   export DISCORD_TOKEN=your_bot_token
+
+   # Optional (faster slash command sync during development)
+   export DISCORD_GUILD_ID=your_server_id
+
+   # Daily schedule configuration
+   export DISCORD_DAILY_CHANNEL_ID=channel_id
+   export DISCORD_DAILY_TIME=09:30        # Eastern Time
+   export DISCORD_DAILY_STRATEGY=example_rsi_flow
+   ```
+
+4. **Run the Bot**
+   ```bash
+   ib-picker bot run
+   ```
+
+### Discord Commands
+
+| Command | Description |
+|---------|-------------|
+| `/ping` | Check bot latency |
+| `/help` | Show available commands |
+| `/about` | Bot information and links |
+| `/analyze` | Run strategy analysis on symbols |
+| `/signals` | Show recent recommendations |
+| `/strategies` | List available strategies |
+| `/fetch stocks` | Fetch stock data for symbols |
+| `/fetch flows` | Fetch flow alerts |
+| `/status` | Show data coverage |
+| `/watchlist` | List watched symbols |
+| `/metrics` | Show trading performance |
+| `/trades` | Show recent trades |
+| `/schedule status` | Check daily schedule |
+| `/schedule run` | Manually trigger daily analysis |
+
+### Daily Scheduled Analysis
+
+When configured, the bot automatically posts analysis results daily:
+
+```bash
+# Configure daily schedule
+export DISCORD_DAILY_CHANNEL_ID=123456789012345678
+export DISCORD_DAILY_TIME=09:30              # Eastern Time, before market open
+export DISCORD_DAILY_STRATEGY=example_rsi_flow
+export DISCORD_DAILY_ENABLED=true
+```
+
+The bot will:
+1. Fetch latest stock data for the watchlist
+2. Fetch latest flow alerts
+3. Run the configured strategy
+4. Post results as a rich embed to the designated channel
+
+### Docker Deployment
+
+```bash
+# Local development with Docker Compose
+docker compose up --build
+
+# With Azure Storage emulation (Azurite)
+docker compose --profile azure-local up
+```
+
+See [docs/adr/009-azure-hosting.md](docs/adr/009-azure-hosting.md) for Azure Container Apps deployment.
+
 ## Web Interface
 
 The application includes a web UI for visual interaction with all features.
@@ -424,6 +510,12 @@ ib-daily-picker/
 │   ├── config.py           # pydantic-settings configuration
 │   ├── analysis/           # Strategy evaluation, indicators, signals
 │   ├── backtest/           # Backtesting engine and metrics
+│   ├── discord/            # Discord bot interface
+│   │   ├── bot.py          # Main bot class
+│   │   ├── cogs/           # Slash command modules
+│   │   ├── embeds.py       # Rich embed formatters
+│   │   ├── scheduler.py    # Daily analysis task
+│   │   └── storage.py      # Azure Blob Storage sync
 │   ├── fetchers/           # Data fetchers (yfinance, Finnhub, UW)
 │   ├── journal/            # Trade journal management
 │   ├── llm/                # LLM strategy conversion
@@ -435,6 +527,7 @@ ib-daily-picker/
 │       ├── routes/pages/   # Server-rendered pages
 │       ├── templates/      # Jinja2 templates
 │       └── static/         # CSS, JS assets
+├── infra/                  # Azure infrastructure (Bicep)
 ├── strategies/             # YAML strategy definitions
 ├── tests/                  # Test suite
 └── docs/adr/               # Architecture Decision Records
@@ -446,10 +539,12 @@ ib-daily-picker/
 |-------|------------|
 | CLI | Typer + Rich |
 | Web | FastAPI + Jinja2 + uvicorn |
+| Discord | discord.py |
 | Config | pydantic-settings |
 | Stock Data | yfinance (primary) + Finnhub (fallback) |
 | Flow Data | Unusual Whales API |
 | Database | DuckDB (analytics) + SQLite (state) |
+| Cloud Storage | Azure Blob Storage (optional) |
 | Validation | Pydantic v2 |
 | LLM | Instructor (Anthropic + Ollama) |
 | Testing | pytest |

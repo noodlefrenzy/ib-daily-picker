@@ -13,6 +13,8 @@ This directory contains Architecture Decision Records (ADRs) for the IB Daily Pi
 | [ADR-005](005-strategy-format.md) | Strategy Definition Format (YAML) | Accepted | 2026-01-26 |
 | [ADR-006](006-llm-integration.md) | LLM Integration (Anthropic + Ollama) | Accepted | 2026-01-26 |
 | [ADR-007](007-web-framework.md) | Web Framework (FastAPI + Jinja2) | Accepted | 2026-01-28 |
+| [ADR-008](008-discord-bot.md) | Discord Bot Interface (discord.py) | Accepted | 2026-01-30 |
+| [ADR-009](009-azure-hosting.md) | Azure Hosting (Container Apps + Blob Storage) | Accepted | 2026-01-30 |
 
 ## ADR Process
 

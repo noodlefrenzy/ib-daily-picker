@@ -54,7 +54,7 @@ Use **Azure Container Apps** for hosting with **Azure Blob Storage** for databas
 - **Simplicity**: No Kubernetes cluster to manage
 - **Cost**: Pay only for actual compute usage
 - **Security**: Managed Identity eliminates credential management
-- **CI/CD**: GitHub Actions deploys on push to main
+- **CI/CD**: GitHub Actions deploys on manual trigger (workflow_dispatch)
 - **Observability**: Log Analytics integration for debugging
 
 ### Negative
@@ -121,15 +121,20 @@ Use **Azure Container Apps** for hosting with **Azure Blob Storage** for databas
 # .github/workflows/deploy.yml
 on:
   push:
-    branches: [main]
-  workflow_dispatch:
+    branches: [main]      # Triggers build job only
+  pull_request:
+    branches: [main]      # Triggers build job only
+  workflow_dispatch:      # Manual trigger for full deploy
 
 jobs:
-  build:     # Lint, type-check, test
-  docker:    # Build and push to ACR
-  deploy:    # Deploy Bicep + update Container App
-  notify:    # Report deployment status
+  build:     # Lint + test (runs on all triggers)
+  docker:    # Build and push to ACR (manual trigger only)
+  deploy:    # Deploy Bicep + update Container App (manual trigger only)
+  notify:    # Report deployment status (manual trigger only)
 ```
+
+**Note:** The docker, deploy, and notify jobs only run on manual trigger (workflow_dispatch)
+until Azure infrastructure is set up and `AZURE_CREDENTIALS` secret is configured.
 
 ## Database Sync Strategy
 

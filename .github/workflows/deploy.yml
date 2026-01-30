@@ -52,11 +52,11 @@ jobs:
       - name: Run tests
         run: pytest --tb=short
 
-  # Build and push Docker image
+  # Build and push Docker image (only on manual trigger - requires Azure setup)
   docker:
     needs: build
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch'
     outputs:
       image-tag: ${{ steps.meta.outputs.tags }}
     steps:
@@ -96,11 +96,11 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
-  # Deploy to Azure Container Apps
+  # Deploy to Azure Container Apps (only on manual trigger - requires Azure setup)
   deploy:
     needs: docker
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch'
     environment:
       name: ${{ github.event.inputs.environment || 'dev' }}
     steps:
@@ -151,11 +151,11 @@ jobs:
                       uw-api-key=keyvaultref:${KV_NAME}:uw-api-key \
             || echo "Secrets may not exist yet - configure them in Key Vault"
 
-  # Notify on deployment
+  # Notify on deployment (only on manual trigger)
   notify:
     needs: [build, docker, deploy]
     runs-on: ubuntu-latest
-    if: always() && github.ref == 'refs/heads/main'
+    if: always() && github.event_name == 'workflow_dispatch'
     steps:
       - name: Deployment status
         run: |

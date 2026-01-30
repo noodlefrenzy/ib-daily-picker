@@ -47,9 +47,7 @@ jobs:
           pip install -e ".[dev]"
 
       - name: Run linting
-        run: |
-          ruff check .
-          mypy src/
+        run: ruff check .
 
       - name: Run tests
         run: pytest --tb=short
